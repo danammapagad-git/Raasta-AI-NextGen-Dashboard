@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flipkart Brand Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --fk-yellow: #F7E018;
+    --fk-blue: #2874F0;
+    --fk-dark: #172337;
+    --fk-light: #F5F5F5;
+    --good: #1B8A5A;
+    --bad: #D32F2F;
+    --improving: #F57C00;
+    --card-bg: #FFFFFF;
+    --border: #E0E0E0;
+    --text: #212121;
+    --subtext: #757575;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: var(--fk-light); color: var(--text); }
+
+  /* HEADER */
+  .header {
+    background: var(--fk-dark);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 60px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header-logo {
+    background: var(--fk-yellow);
+    color: var(--fk-dark);
+    font-weight: 900;
+    font-size: 18px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    letter-spacing: -0.5px;
+    font-style: italic;
+  }
+  .header-title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .header-subtitle {
+    color: #aaa;
+    font-size: 12px;
+    margin-left: auto;
+  }
+  .last-updated {
+    color: var(--fk-yellow);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* FILTERS */
+  .filters {
+    background: #fff;
+    border-bottom: 2px solid var(--fk-yellow);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 60px;
+    z-index: 99;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .filter-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--subtext);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  select, input[type=text] {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    transition: border 0.2s;
+    min-width: 180px;
+  }
+  select:focus, input:focus { border-color: var(--fk-blue); }
+  .date-tabs {
+    display: flex;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .date-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #fff;
+    color: var(--subtext);
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .date-tab.active {
+    background: var(--fk-blue);
+    color: #fff;
+  }
+  .date-tab:hover:not(.active) { background: var(--fk-light); }
+  .btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--fk-blue); color: #fff; }
+  .btn-primary:hover { background: #1a5dc8; }
+  .btn-alert { background: #D32F2F; color: #fff; }
+  .btn-alert:hover { background: #b71c1c; }
+  .btn-export { background: var(--fk-dark); color: #fff; }
+
+  /* MAIN CONTENT */
+  .main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+
+  /* BRAND HEALTH BANNER */
+  .brand-banner {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .brand-banner.good { background: linear-gradient(135deg, #1B8A5A, #26A56E); }
+  .brand-banner.bad { background: linear-gradient(135deg, #D32F2F, #E53935); }
+  .brand-banner.improving { background: linear-gradient(135deg, #F57C00, #FB8C00); }
+  .banner-score {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .banner-info h2 { font-size: 20px; font-weight: 700; }
+  .banner-info p { font-size: 13px; opacity: 0.9; margin-top: 3px; }
+  .banner-badges { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .badge {
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .banner-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* METRIC CARDS */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .metric-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .metric-card.up::before { background: var(--good); }
+  .metric-card.down::before { background: var(--bad); }
+  .metric-card.neutral::before { background: var(--fk-blue); }
+  .metric-card.warn::before { background: var(--improving); }
+  .metric-name { font-size: 11px; color: var(--subtext); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .metric-value { font-size: 28px; font-weight: 800; margin: 6px 0 2px; line-height: 1; }
+  .metric-value.good { color: var(--good); }
+  .metric-value.bad { color: var(--bad); }
+  .metric-value.neutral { color: var(--fk-blue); }
+  .metric-value.warn { color: var(--improving); }
+  .metric-change {
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .metric-change.up { color: var(--good); }
+  .metric-change.down { color: var(--bad); }
+  .metric-sub { font-size: 10px; color: var(--subtext); margin-top: 2px; }
+
+  /* CHARTS ROW */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .chart-subtitle { font-size: 11px; color: var(--subtext); }
+  canvas { max-height: 200px; }
+
+  /* INSIGHTS + CAMPAIGNS */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  /* INSIGHTS */
+  .insights-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  .insights-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+  .insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .insight-item.good { background: #E8F5E9; color: #1B5E20; }
+  .insight-item.bad { background: #FFEBEE; color: #B71C1C; }
+  .insight-item.warn { background: #FFF3E0; color: #E65100; }
+  .insight-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .insight-text { flex: 1; }
+  .insight-action {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .insight-action.good { background: var(--good); color: #fff; }
+  .insight-action.bad { background: var(--bad); color: #fff; }
+  .insight-action.warn { background: var(--improving); color: #fff; }
+
+  /* CAMPAIGN TABLE */
+  .campaigns-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    background: var(--fk-dark);
+    color: #fff;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: #F5F8FF; }
+  tbody tr:nth-child(even) { background: #FAFAFA; }
+  tbody tr:nth-child(even):hover { background: #F0F4FF; }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid #F0F0F0; white-space: nowrap; }
+  .fsn-link { color: var(--fk-blue); font-weight: 600; text-decoration: none; font-family: monospace; font-size: 11px; }
+  .bid-rec { color: var(--good); font-weight: 700; }
+  .bid-up { color: var(--bad); font-weight: 700; }
+  .bid-down { color: var(--improving); font-weight: 700; }
+  .roas-high { color: var(--good); font-weight: 700; }
+  .roas-low { color: var(--bad); font-weight: 700; }
+  .priority-high { background: #FFEBEE; color: var(--bad); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+  .priority-med { background: #FFF3E0; color: var(--improving); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+  .priority-low { background: #E8F5E9; color: var(--good); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+
+  /* CATALOG HYGIENE */
+  .hygiene-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .hygiene-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+  .hygiene-title { font-size: 11px; font-weight: 700; color: var(--subtext); text-transform: uppercase; margin-bottom: 8px; }
+  .progress-bar {
+    height: 8px;
+    background: #F0F0F0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 4px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s;
+  }
+  .progress-fill.good { background: var(--good); }
+  .progress-fill.warn { background: var(--improving); }
+  .progress-fill.bad { background: var(--bad); }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; }
+  .modal-close { cursor: pointer; color: var(--subtext); font-size: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--subtext); margin-bottom: 4px; display: block; }
+  .form-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .form-input:focus { border-color: var(--fk-blue); outline: none; }
+  textarea.form-input { height: 120px; resize: vertical; font-family: inherit; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--fk-dark);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 1000;
+    display: none;
+    animation: slideUp 0.3s ease;
+  }
+  .toast.show { display: block; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin-left: 8px;
+  }
+
+  /* PRICE RECOMMENDATION */
+  .price-alert-banner {
+    display: none;
+    background: linear-gradient(135deg, #B71C1C, #D32F2F);
+    color: #fff;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    align-items: center;
+    gap: 14px;
+    animation: pulseRed 2s infinite;
+  }
+  .price-alert-banner.show { display: flex; }
+  @keyframes pulseRed {
+    0%,100% { box-shadow: 0 0 0 0 rgba(211,47,47,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(211,47,47,0); }
+  }
+  .price-alert-icon { font-size: 28px; }
+  .price-alert-body h3 { font-size: 15px; font-weight: 700; }
+  .price-alert-body p { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+  .price-alert-items { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .price-alert-pill {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .price-section {
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .price-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .price-stat {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--fk-light);
+  }
+  .price-stat-label { font-size: 10px; font-weight: 700; color: var(--subtext); text-transform: uppercase; }
+  .price-stat-value { font-size: 22px; font-weight: 800; margin: 4px 0; }
+  .price-stat-value.competitive { color: var(--good); }
+  .price-stat-value.expensive { color: var(--bad); }
+  .price-stat-value.parity { color: var(--fk-blue); }
+  .price-stat-value.neutral { color: var(--text); }
+  .price-stat-sub { font-size: 10px; color: var(--subtext); }
+
+  .parity-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    white-space: nowrap;
+  }
+  .parity-badge.amazon { background: #FF9900; color: #fff; }
+  .parity-badge.flipkart { background: var(--fk-blue); color: #fff; }
+  .parity-badge.competitor { background: #7B1FA2; color: #fff; }
+
+  .price-diff-cell { font-weight: 700; }
+  .price-diff-cell.cheaper { color: var(--good); }
+  .price-diff-cell.expensive { color: var(--bad); }
+  .price-diff-cell.parity { color: var(--fk-blue); }
+
+  .rec-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .rec-badge.reduce { background: #FFEBEE; color: var(--bad); }
+  .rec-badge.increase { background: #E8F5E9; color: var(--good); }
+  .rec-badge.maintain { background: #E3F2FD; color: var(--fk-blue); }
+  .rec-badge.match-amz { background: #FFF3E0; color: var(--improving); }
+  .rec-badge.urgent { background: var(--bad); color: #fff; }
+
+  .price-increase-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: #FFEBEE; color: var(--bad);
+    font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">flipkart</div>
+  <div class="header-title">Brand Intelligence Dashboard</div>
+  <div class="header-subtitle">
+    <span>KAM Analytics Platform &nbsp;|&nbsp; </span>
+    <span class="last-updated">Last updated: <span id="lastUpdated"></span></span>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-label">KAM</span>
+    <select id="kamFilter" onchange="applyFilters()">
+      <option value="">All KAMs</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Brand</span>
+    <select id="brandFilter" onchange="loadBrand()">
+      <option value="">Select Brand...</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Vertical</span>
+    <select id="verticalFilter" onchange="loadBrand()">
+      <option value="">All Verticals</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Date Range</span>
+    <div class="date-tabs">
+      <button class="date-tab active" onclick="setDateRange('daily',this)">Daily</button>
+      <button class="date-tab" onclick="setDateRange('weekly',this)">Weekly</button>
+      <button class="date-tab" onclick="setDateRange('monthly',this)">Monthly</button>
+      <button class="date-tab" onclick="setDateRange('yearly',this)">Yearly</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">From</span>
+    <input type="date" id="dateFrom" onchange="loadBrand()" style="min-width:130px"/>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">To</span>
+    <input type="date" id="dateTo" onchange="loadBrand()" style="min-width:130px"/>
+  </div>
+  <button class="btn btn-alert" onclick="showEmailModal()">📧 Alert KAM</button>
+  <button class="btn btn-export" onclick="exportReport()">⬇ Export</button>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="mainContent">
+
+  <!-- PLACEHOLDER -->
+  <div id="placeholder" style="text-align:center; padding:80px 20px; color:var(--subtext);">
+    <div style="font-size:48px; margin-bottom:16px;">📊</div>
+    <div style="font-size:18px; font-weight:700; margin-bottom:8px;">Select a Brand to view insights</div>
+    <div style="font-size:13px;">Choose a KAM and Brand from the filters above to load the full intelligence report.</div>
+    <div style="font-size:12px; margin-top:20px; color:#aaa;">Covering 552 brands across Flipkart's Nextgen portfolio &nbsp;|&nbsp; Data from Jan 2025 – Present</div>
+  </div>
+
+  <!-- DASHBOARD (hidden until brand selected) -->
+  <div id="dashboard" style="display:none;">
+
+    <!-- BRAND HEALTH BANNER -->
+    <div class="brand-banner" id="healthBanner">
+      <div class="banner-score" id="healthScore">82</div>
+      <div class="banner-info">
+        <h2 id="healthBrandName">Brand Name</h2>
+        <p id="healthStatus">Overall Brand Health</p>
+        <div class="banner-badges" id="healthBadges"></div>
+      </div>
+      <div class="banner-actions">
+        <button class="btn btn-primary" onclick="showEmailModal()">📧 Send Alert</button>
+      </div>
+    </div>
+
+    <!-- METRIC CARDS -->
+    <div class="section-title">📈 Performance Metrics</div>
+    <div class="metrics-grid" id="metricsGrid"></div>
+
+    <!-- CATALOG HYGIENE -->
+    <div class="section-title">🗂 Catalog Hygiene</div>
+    <div class="hygiene-row" id="hygieneRow"></div>
+
+    <!-- CHARTS -->
+    <div class="section-title">📊 Trends & Share Analysis</div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Sales & Revenue Trend</div>
+            <div class="chart-subtitle" id="chartPeriodLabel">Daily view</div>
+          </div>
+          <select id="metricToggle" onchange="updateSalesChart()" style="min-width:120px; font-size:11px; padding:4px 8px;">
+            <option value="revenue">Revenue (₹)</option>
+            <option value="units">Units Sold</option>
+            <option value="growth">Growth %</option>
+          </select>
+        </div>
+        <canvas id="salesChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Brand vs Vertical Share</div>
+            <div class="chart-subtitle" id="verticalShareLabel">Share of vertical GMV</div>
+          </div>
+        </div>
+        <canvas id="shareChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">OOS & FBF Trend</div>
+            <div class="chart-subtitle">Stock & fulfillment health</div>
+          </div>
+        </div>
+        <canvas id="oosChart"></canvas>
+      </div>
+    </div>
+
+
+    <!-- PRICE RECOMMENDATIONS -->
+    <div class="section-title">💰 Price Intelligence & Recommendations</div>
+
+    <!-- Price Increase Alert Banner -->
+    <div class="price-alert-banner" id="priceAlertBanner">
+      <div class="price-alert-icon">🚨</div>
+      <div class="price-alert-body">
+        <h3 id="priceAlertTitle">Price Increase Detected!</h3>
+        <p id="priceAlertDesc">The following FSNs have prices higher than competitors / Amazon parity. Immediate review recommended.</p>
+      </div>
+      <div class="price-alert-items" id="priceAlertPills"></div>
+      <button class="btn btn-alert" style="flex-shrink:0;" onclick="sendPriceAlert()">📧 Alert KAM</button>
+    </div>
+
+    <div class="price-section">
+      <div class="price-summary-row" id="priceSummaryRow"></div>
+      <div class="table-header">
+        <div>
+          <div style="font-weight:700; font-size:13px;">FSN-Level Price Comparison</div>
+          <div style="font-size:11px; color:var(--subtext);">FK price vs Competitors & Amazon | Variant-matched where available</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="priceTypeFilter" onchange="renderPriceTable()" style="font-size:11px; padding:4px 8px; min-width:110px;">
+            <option value="all">All FSNs</option>
+            <option value="expensive">FK Expensive</option>
+            <option value="cheaper">FK Cheaper</option>
+            <option value="parity">Parity Match</option>
+            <option value="alert">Price Alerts</option>
+          </select>
+          <select id="parityTypeFilter" onchange="renderPriceTable()" style="font-size:11px; padding:4px 8px; min-width:120px;">
+            <option value="all">All Types</option>
+            <option value="amazon">Amazon Parity</option>
+            <option value="competitor">Competitor</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>FSN / MSKU</th>
+              <th>Product</th>
+              <th>Variant</th>
+              <th>Parity Type</th>
+              <th>FK Price</th>
+              <th id="priceVsLabel">vs Last Period ▲▼</th>
+              <th>Comp / Amazon</th>
+              <th>Gap %</th>
+              <th>Last Changed</th>
+              <th>Recommendation</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="priceTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BOTTOM ROW: INSIGHTS + CAMPAIGNS -->
+    <div class="section-title">💡 Insights & Campaign Recommendations</div>
+    <div class="bottom-row">
+      <div class="insights-card">
+        <div style="font-weight:700; font-size:13px; margin-bottom:12px;">Quick Insights</div>
+        <div id="insightsList"></div>
+      </div>
+      <div class="campaigns-card">
+        <div class="table-header">
+          <div>
+            <div style="font-weight:700; font-size:13px;">Campaign Performance & CPC Recommendations</div>
+            <div style="font-size:11px; color:var(--subtext);">FSNs to prioritize with bid & budget guidance</div>
+          </div>
+          <select id="campFilter" onchange="renderCampaigns()" style="font-size:11px; padding:4px 8px; min-width:100px;">
+            <option value="all">All</option>
+            <option value="high">High Priority</option>
+            <option value="med">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>FSN</th>
+                <th>Product</th>
+                <th>Campaign</th>
+                <th>Priority</th>
+                <th>Curr CPC</th>
+                <th>Rec CPC</th>
+                <th>Daily Budget</th>
+                <th>Impr</th>
+                <th>Clicks</th>
+                <th>ROAS</th>
+              </tr>
+            </thead>
+            <tbody id="campaignTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /main -->
+
+<!-- EMAIL MODAL -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>📧 Send Brand Alert Email</span>
+      <span class="modal-close" onclick="hideEmailModal()">✕</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label">To (KAM Email)</label>
+      <input class="form-input" id="emailTo" type="email" placeholder="kam@flipkart.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">CC</label>
+      <input class="form-input" id="emailCc" type="email" placeholder="manager@flipkart.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Subject</label>
+      <input class="form-input" id="emailSubject"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Message</label>
+      <textarea class="form-input" id="emailBody"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" style="background:#eee; color:#333;" onclick="hideEmailModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="sendEmail()">Send Alert →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const ALL_BRANDS = [{"brand": "Casajoya", "sellerId": "c2f2ef0a98274ebd", "sellerName": "BansalOrnaMints", "kam": "Priyanshu"}, {"brand": "Livyor", "sellerId": "1772ebbc776c467e", "sellerName": "YORLIV", "kam": "Unassigned"}, {"brand": "Frido", "sellerId": "b69b4ade47db4afb", "sellerName": "ArcatronMobility", "kam": "Priyanshu"}, {"brand": "SARA", "sellerId": "2a2db0a8cf324bb2", "sellerName": "SaraIndustry", "kam": "Unassigned"}, {"brand": "ORACURA", "sellerId": "3ef21f313a994f1a", "sellerName": "ORACURA", "kam": "Ranjeet"}, {"brand": "AGEasy", "sellerId": "2f5329b1996e460f", "sellerName": "AGEASY", "kam": "Ranjeet"}, {"brand": "LetsShave", "sellerId": "7d33d050769c40a0", "sellerName": "LetsShave", "kam": "Jai"}, {"brand": "Kryptic", "sellerId": "af72513ee1ca4bc3", "sellerName": "BrandFortunes", "kam": "Unassigned"}, {"brand": "awenest", "sellerId": "7ac1bd5f9cd74ae6", "sellerName": "awenest", "kam": "Priyanshu"}, {"brand": "Chaukas", "sellerId": "db7d577258e24593", "sellerName": "DhanvithCreations", "kam": "Unassigned"}, {"brand": "Eatoriyumm", "sellerId": "5f7bbc4c3cca44e7", "sellerName": "EATORIYUMM", "kam": "Priyanshu"}, {"brand": "GLOBUS NATURALS", "sellerId": "766dcc02300b4856", "sellerName": "GlobusNaturals", "kam": "Jai"}, {"brand": "Pro-To-Grow", "sellerId": "1e53316560804863", "sellerName": "ProToGrow", "kam": "Jai"}, {"brand": "Herbal max", "sellerId": "62f40cbf4471436e", "sellerName": "Herbalmax", "kam": "Unassigned"}, {"brand": "Nutritoz", "sellerId": "c813d486cba14e2e", "sellerName": "Nutritoz", "kam": "Ranjeet"}, {"brand": "Maizo", "sellerId": "tgxgwr9ddrixjeya", "sellerName": "ESPORTS", "kam": "Jai"}, {"brand": "PentaSure", "sellerId": "ad53e442be8f4ba3", "sellerName": "Hexagon Nutrition", "kam": "Ranjeet"}, {"brand": "Henley", "sellerId": "a602a48bb337428b", "sellerName": "Gaaragrocery", "kam": "Unassigned"}, {"brand": "The Food Stuff", "sellerId": "b00ec03f5f204b34", "sellerName": "THEFOODSTUFF", "kam": "Imran"}, {"brand": "Srishma", "sellerId": "65286146394948f8", "sellerName": "VINAYAKAYURVEDA", "kam": "Jai"}, {"brand": "Formen", "sellerId": "5fcf481276ae4232", "sellerName": "ThorsHealth", "kam": "Jai"}, {"brand": "PLUSH", "sellerId": "e39e1e6a0bc44725", "sellerName": "Urban Essentials India Private Limited", "kam": "Goutami"}, {"brand": "Lila Dry Fruits", "sellerId": "0ea26f73b72d45f4", "sellerName": "Lila dry fruits", "kam": "Unassigned"}, {"brand": "TruNativ", "sellerId": "126e9a65dbe7485b", "sellerName": "TruNativ", "kam": "Priyanshu"}, {"brand": "GLAMVEDA", "sellerId": "70446db401774d06", "sellerName": "Glamveda", "kam": "Jai"}, {"brand": "Tutots", "sellerId": "6dc5ad0a8db740d7", "sellerName": "Walnutorg", "kam": "Priyanshu"}, {"brand": "Kerala Ayurveda", "sellerId": "5a1e590ad71b43c7", "sellerName": "KeralaAyurveda", "kam": "Priyanshu"}, {"brand": "Poorak", "sellerId": "3a9073e7eecd4d5a", "sellerName": "REGAL INFRASTRUCTURE", "kam": "Unassigned"}, {"brand": "Bjain", "sellerId": "daaadc4883a74f6b", "sellerName": "BJAINPharmaceuticals", "kam": "Jai"}, {"brand": "SUNOVA", "sellerId": "3b094c76d97e4223", "sellerName": "WILLMARSCHWABE", "kam": "Ranjeet"}, {"brand": "Axiom", "sellerId": "6c0eb50f8dd84635", "sellerName": "AxiomAyurveda", "kam": "Priyanshu"}, {"brand": "TWIN BIRDS", "sellerId": "pf4uq6wgem61y7ic", "sellerName": "TwinBirds", "kam": "Alankrita"}, {"brand": "Dr.Willmar Schwabe India", "sellerId": "605df880c53948d3", "sellerName": "SchwabeIndiamedicine", "kam": "Jai"}, {"brand": "BetterHood", "sellerId": "6e59a6905a00457d", "sellerName": "betterhood", "kam": "Priyanshu"}, {"brand": "The Whole Truth", "sellerId": "e4a504b0373c4f09", "sellerName": "TheWholeTruth", "kam": "Akansha"}, {"brand": "Healofy Naturals", "sellerId": "edcaa2e02e22458d", "sellerName": "Healofy", "kam": "Ranjeet"}, {"brand": "Conscious Chemist", "sellerId": "89c39da7ac154230", "sellerName": "Conscious Chemist", "kam": "Ranjeet"}, {"brand": "Elko", "sellerId": "654efe356efc4765", "sellerName": "ELKO", "kam": "Priyanshu"}, {"brand": "labrada nutrition", "sellerId": "b6000203e3014b56", "sellerName": "HealthTreasure", "kam": "Jai"}, {"brand": "Orgatre", "sellerId": "14ba2f14e9f24cb7", "sellerName": "Orgatre", "kam": "Ranjeet"}, {"brand": "MediGrip", "sellerId": "1c11a8f174454716", "sellerName": "Medigrip", "kam": "Dhwani"}, {"brand": "healthifyme", "sellerId": "fae4ca10a44548ef", "sellerName": "HealthifymeWellnessPvtLtd", "kam": "Unassigned"}, {"brand": "Good Monk", "sellerId": "423e485e070844f1", "sellerName": "SuperFoodsValley", "kam": "Alankrita"}, {"brand": "Kanpeki", "sellerId": "9b3d83061ffc4a64", "sellerName": "VolumeBrandsPvtLtd", "kam": "Alankrita"}, {"brand": "Tnw - The Natural Wash", "sellerId": "9085feff302f4f67", "sellerName": "MPGBRANDSPvtLtd", "kam": "Unassigned"}, {"brand": "Nutrabud", "sellerId": "d89e56a1322d4282", "sellerName": "Nutrabud", "kam": "Jai"}, {"brand": "Bhagya G", "sellerId": "305bbe7da3b844f0", "sellerName": "BhagyaG", "kam": "Imran"}, {"brand": "DIVINE NUTRITION", "sellerId": "a7b801c889784322", "sellerName": "VEDANTNUTRITION", "kam": "Jai"}, {"brand": "Bruno Milano", "sellerId": "375afede68194117", "sellerName": "Ambervision", "kam": "Unassigned"}, {"brand": "Calix Herbal", "sellerId": "bb538a401f4c4f8c", "sellerName": "Calix Herbal Ltd.", "kam": "Unassigned"}, {"brand": "Pet Life", "sellerId": "bb538a401f4c4f8c-", "sellerName": "Pet Life", "kam": "Unassigned"}, {"brand": "Masofta", "sellerId": "72924a70da4645ec", "sellerName": "Masofta", "kam": "Ranjeet"}, {"brand": "EVERYOUTH", "sellerId": "3f232c776b8e4e08", "sellerName": "SHUBHIKAECOWELLS", "kam": "Unassigned"}, {"brand": "BRILLARE", "sellerId": "929babb21dac4428", "sellerName": "BrillareScience", "kam": "Jai"}, {"brand": "Multani", "sellerId": "c035ba3bdcae491b", "sellerName": "MultaniPharmaceuticalL", "kam": "Jai"}, {"brand": "Teleone", "sellerId": "b9a6741d16e34e96", "sellerName": "TELEONE", "kam": "Imran"}, {"brand": "KrugerMetaform", "sellerId": "5d48e4830b604481", "sellerName": "KrugerMetaform", "kam": "Ranjeet"}, {"brand": "KIMAYRA", "sellerId": "9f29233a26e1401d", "sellerName": "KimayraWorld", "kam": "Asif"}, {"brand": "The Tribe Concepts", "sellerId": "85c7fe85b81c44d3", "sellerName": "HouseofTribe", "kam": "Unassigned"}, {"brand": "Kravio", "sellerId": "d4573524c1c44f70", "sellerName": "Kravio", "kam": "Imran"}, {"brand": "Cureveda", "sellerId": "78bcac031eee4b7b", "sellerName": "Cureveda", "kam": "Imran"}, {"brand": "Deemark", "sellerId": "w492f4x1655kk68q", "sellerName": "Deemark", "kam": "Imran"}, {"brand": "52 Sundaze", "sellerId": "f1aca392be41459e", "sellerName": "HOKConsumer", "kam": "Unassigned"}, {"brand": "Ved Sanjeevani", "sellerId": "61b1c2b1a72945f1", "sellerName": "VedSanjeevani", "kam": "Unassigned"}, {"brand": "AMBIC", "sellerId": "fa8bc884dde04527", "sellerName": "Ambic Ayurved India", "kam": "Ranjeet"}, {"brand": "Yellow Naturals", "sellerId": "18d7beb2f7ac48a0", "sellerName": "YellowNaturals", "kam": "Rajnish"}, {"brand": "Manisa Beaute", "sellerId": "c8b3a2b3cf2b4dc4", "sellerName": "ManisaBeauteCo", "kam": "Unassigned"}, {"brand": "Rediclinic", "sellerId": "283f112f7ea2474c", "sellerName": "Rediclinic", "kam": "Alankrita"}, {"brand": "Cos-IQ", "sellerId": "ab44458313d94a98", "sellerName": "InlabsLifesciences", "kam": "Jayant"}, {"brand": "APRODZ", "sellerId": "8f07e7f654084dab", "sellerName": "APRODZ", "kam": "Jai"}, {"brand": "Indigenous Honey", "sellerId": "1d7a96f462db460d", "sellerName": "TurritopsisPvtLtd", "kam": "Ranjeet"}, {"brand": "NAMHYA FOODS", "sellerId": "0396319f208547ee", "sellerName": "NamhyaFood", "kam": "Rajnish"}, {"brand": "Awbabie", "sellerId": "c7841547ed534022", "sellerName": "50SApparelPvtLtd", "kam": "Unassigned"}, {"brand": "MUNNS & MARS", "sellerId": "d85415a1126c4358", "sellerName": "MMHTEXFAB", "kam": "Unassigned"}, {"brand": "Origami", "sellerId": "e975cb158e994d45", "sellerName": "Origami Tissues", "kam": "Jayant"}, {"brand": "FYN", "sellerId": "fae663dafb40438e", "sellerName": "FYN Agro", "kam": "Rajnish"}, {"brand": "Planet herbs", "sellerId": "3d7df9f061574d66", "sellerName": "PlanetHerbs", "kam": "Imran"}, {"brand": "AZAH", "sellerId": "3bdd732e1367464c", "sellerName": "PH91PRIVATELIMITED", "kam": "Unassigned"}, {"brand": "Outer Woods", "sellerId": "42e168785b1c4c4a", "sellerName": "OuterWoods", "kam": "Unassigned"}, {"brand": "Timus", "sellerId": "5574b2ccfd3c460e", "sellerName": "Timus", "kam": "Unassigned"}, {"brand": "imeco", "sellerId": "d098aa4fcd044e72", "sellerName": "Amwoodo", "kam": "Ranjeet"}, {"brand": "Devil Will Cry", "sellerId": "df43b9d9b4b04a0b", "sellerName": "DevilWillCry", "kam": "Unassigned"}, {"brand": "Herbs & hills", "sellerId": "66d9e1eef546487c", "sellerName": "Darjuv9 Online", "kam": "Jayant"}, {"brand": "VOYAGER PARIS", "sellerId": "f3b56ad5718b4de4", "sellerName": "AlphaDigitalCorp", "kam": "Rajnish"}, {"brand": "Earthen Story", "sellerId": "09f87b5597cd4517", "sellerName": "Earthen Story Private Limited", "kam": "Unassigned"}, {"brand": "Sweetmate", "sellerId": "f20396e01cec4873", "sellerName": "TevosPharmaceuticals", "kam": "Akansha"}, {"brand": "Star Struck By Sunny Leone", "sellerId": "d6de35ec04e84f63", "sellerName": "StarStruck", "kam": "Ruchi"}, {"brand": "AurumMedicarPvtLtd", "sellerId": "c9a7c8557a3440f3", "sellerName": "AurumMedicarPvtLtd", "kam": "Unassigned"}, {"brand": "CookieMan", "sellerId": "b4033863dd294715", "sellerName": "CookieMan", "kam": "Unassigned"}, {"brand": "BOOKFORD", "sellerId": "2e91da3be08543d5", "sellerName": "Bookford", "kam": "Akansha"}, {"brand": "Gimi Michi", "sellerId": "17a7fc47485c40d6", "sellerName": "GimiMichi", "kam": "Adithya"}, {"brand": "EATOPiA", "sellerId": "ad75ad53f8c84da1", "sellerName": "EATOPIA from mcgill", "kam": "Priyanshu"}, {"brand": "winners online edutech private limited", "sellerId": "71c62bf232224b8e", "sellerName": "WINNERSiNSTiTUTE01", "kam": "Rajnish"}, {"brand": "Legit", "sellerId": "8606bd029f9e4090", "sellerName": "Trask F-Assured", "kam": "Rajnish"}, {"brand": "FarmDidi", "sellerId": "896bc9b885ca4903", "sellerName": "FarmDidi", "kam": "Ranjeet"}, {"brand": "Mprix", "sellerId": "8a8b4f77a0ad46c8", "sellerName": "Telex", "kam": "Rajnish"}, {"brand": "nutndiet", "sellerId": "b89d41896970432c", "sellerName": "BrandVan", "kam": "Unassigned"}, {"brand": "JhaJi Taste of Mithila", "sellerId": "b3218e72b26e4df7", "sellerName": "JhajiMithila", "kam": "Akansha"}, {"brand": "gud grain", "sellerId": "a125771338df42c9", "sellerName": "GudGrain", "kam": "Priyanshu"}, {"brand": "Liv", "sellerId": "edf21ed4fbf944d5", "sellerName": "VyomagaBrands", "kam": "Imran"}, {"brand": "Sadhev", "sellerId": "db02e3e853094ff1", "sellerName": "Sadhev", "kam": "Jai"}, {"brand": "Kyari", "sellerId": "2928620777fe40ac", "sellerName": "SelectBrands", "kam": "Priyanshu"}, {"brand": "Yes Mama", "sellerId": "95354b9192404354", "sellerName": "YesMama", "kam": "Unassigned"}, {"brand": "Orika", "sellerId": "e0d039b4638a4d28", "sellerName": "ParasSpices", "kam": "Goutami"}, {"brand": "LEGAL BRIBE", "sellerId": "bff1f2533e014af8", "sellerName": "LGBRFashionPvtLtd", "kam": "Goutami"}, {"brand": "EAT ATLAS", "sellerId": "50e03fec60e14e5c", "sellerName": "EatAtlas", "kam": "Ranjeet"}, {"brand": "Nipura", "sellerId": "66eb9df7557048fa", "sellerName": "NipuraFashion", "kam": "Ranjeet"}, {"brand": "Dr. Su", "sellerId": "aec45b89b9844bbf", "sellerName": "DrSu", "kam": "Imran"}, {"brand": "Anvi Natura", "sellerId": "dff1fa2d8b974711", "sellerName": "Anvinatura", "kam": "Jayant"}, {"brand": "Lifescapes", "sellerId": "4b25d279f12e48a9", "sellerName": "MAEVA", "kam": "Unassigned"}, {"brand": "One Science Nutrition", "sellerId": "b6000203e3014b56-", "sellerName": "HealthTreasure", "kam": "Jai"}, {"brand": "RTS", "sellerId": "44064cdaccf7441f", "sellerName": "Radhe03", "kam": "Harshita"}, {"brand": "Sugar Chilli Co.", "sellerId": "b68acb5344244039", "sellerName": "SugarChilliCo", "kam": "Unassigned"}, {"brand": "Sasa", "sellerId": "54ff1140c6764765", "sellerName": "SASAEYEWEAR", "kam": "Unassigned"}, {"brand": "Hapiso", "sellerId": "b8093fcbc5a74d2a", "sellerName": "Hapiso", "kam": "Unassigned"}, {"brand": "PetWorld", "sellerId": "08eedadcec604939", "sellerName": "MULTILINESOVERSEASPRIVATELIMITED", "kam": "Goutami"}, {"brand": "Derma Decode", "sellerId": "fe7b990316cc4118", "sellerName": "dermadecode", "kam": "Ruchi"}, {"brand": "Boheco", "sellerId": "41ef7eb907ca4bce", "sellerName": "BombayHempCompany", "kam": "Krishna/Pranav"}, {"brand": "WRITE ON WHITE", "sellerId": "8d94a4fcc4f54d24", "sellerName": "HOUSEOFWOW", "kam": "Unassigned"}, {"brand": "Himaira", "sellerId": "7947c76fbbe04c71", "sellerName": "Himaira", "kam": "Unassigned"}, {"brand": "bitteR", "sellerId": "1214209f6b18448f", "sellerName": "E-KOMES LLP", "kam": "Rajnish"}, {"brand": "Orchard Lane", "sellerId": "e31409f5f0244858", "sellerName": "Orchard Lane", "kam": "Ruchi"}, {"brand": "3BUTTERFLIES", "sellerId": "ab23fd813d0741cc", "sellerName": "3butterflies", "kam": "Rajnish"}, {"brand": "Lupin", "sellerId": "aauyb9qbkageucad", "sellerName": "eHealthmart", "kam": "Rajnish"}, {"brand": "Welly Belly", "sellerId": "b6b5fa154e484e3a", "sellerName": "WellyBelly", "kam": "Unassigned"}, {"brand": "Tru Nature", "sellerId": "c5475c4af8d846ae", "sellerName": "Mecraaz", "kam": "Rajnish"}, {"brand": "Casacraft by Pepperfry", "sellerId": "85c56d3409e24f27", "sellerName": "Casacraftbypepperfry", "kam": "Unassigned"}, {"brand": "Pixel Home", "sellerId": "489a95f846854b52", "sellerName": "PIXELHOMEDECOR", "kam": "Asif"}, {"brand": "HANEUL", "sellerId": "2e24b66aff1643d9", "sellerName": "Debebey", "kam": "Asif"}, {"brand": "GLENVIT-X", "sellerId": "fc616f35c386479b", "sellerName": "NEXTINNTRADINGCO", "kam": "Unassigned"}, {"brand": "Elementary Organic", "sellerId": "dccf947239344448", "sellerName": "ELEMENTARYORGANICS", "kam": "Jai"}, {"brand": "JAWAI", "sellerId": "134d525308d244ac", "sellerName": "JAWAI", "kam": "Priyanshu"}, {"brand": "Rabitat", "sellerId": "8c1e5c808d774a45", "sellerName": "MERLINBRANDSPVTLTD", "kam": "Danamma"}, {"brand": "Madhavprash", "sellerId": "50048c7bbc614c04", "sellerName": "DynamicMadhavprash", "kam": "Priyanshu"}, {"brand": "Hampa", "sellerId": "16cf491fc54242d6", "sellerName": "Hampa", "kam": "Harshita"}, {"brand": "Nippo", "sellerId": "cfb594a7e0264163", "sellerName": "INDONATIONALLIMITEDSILVER", "kam": "Asif"}, {"brand": "Nooky", "sellerId": "3b02453118b44fb8", "sellerName": "UrbanNutrition", "kam": "Priyanshu"}, {"brand": "Rico", "sellerId": "10b5e5a6ebcf481f", "sellerName": "RicoAppliances", "kam": "Asif"}, {"brand": "Turmeriq", "sellerId": "d962c01e0fd34736", "sellerName": "Turmeriqco", "kam": "Unassigned"}, {"brand": "buzzing stock", "sellerId": "c39e405150184253", "sellerName": "Buzzingstock", "kam": "Rajnish"}, {"brand": "Wellx", "sellerId": "0c57c7ffc75f4222", "sellerName": "CRAVEXNUTSFOODsLLP", "kam": "Jai"}, {"brand": "MAA SILVER", "sellerId": "6c7832b129204fa1", "sellerName": "maasilver", "kam": "Harshita"}, {"brand": "YGM Acoustic Foams", "sellerId": "5d0700583e5145d3", "sellerName": "YGM Acoustic FoamsGOLD", "kam": "Unassigned"}, {"brand": "Shaping Fabric", "sellerId": "d6476f9ddf3d4af0", "sellerName": "SHAPINGFABRICS", "kam": "Rajnish"}, {"brand": "Japam", "sellerId": "f21caa1d1ee44f97", "sellerName": "JapamIndia", "kam": "Jai"}, {"brand": "Parent", "sellerId": "2c17283492e942e0", "sellerName": "Parentpetfood", "kam": "Unassigned"}, {"brand": "Sri Sri Tattva", "sellerId": "19bae50b24a746d0", "sellerName": "Sri Sri Tattva", "kam": "Jai"}, {"brand": "Mccoy", "sellerId": "9ae7927bcde14920", "sellerName": "McCoyHomeAppliances", "kam": "Asif"}, {"brand": "Arniarts", "sellerId": "0e77b30f5487436e", "sellerName": "Arniarts", "kam": "Unassigned"}, {"brand": "Testbook", "sellerId": "03bea27540b645ea", "sellerName": "Testbook", "kam": "Rajnish"}, {"brand": "Sifoz", "sellerId": "fdab3ddd1a8f4d28", "sellerName": "SifozStayFit", "kam": "Priyanshu"}, {"brand": "Gladful", "sellerId": "a4f12df385a34c99", "sellerName": "Gladful", "kam": "Ranjeet"}, {"brand": "TummyFriendly Foods", "sellerId": "0f2b440a49bd4eea", "sellerName": "TummyFriendlyFoods", "kam": "Ranjeet"}, {"brand": "Mighty Theory", "sellerId": "b70f0e72ea7c42f4", "sellerName": "MightyTheory", "kam": "Unassigned"}, {"brand": "Lorazzo", "sellerId": "2851685b97924616", "sellerName": "LORAZZO", "kam": "Danamma"}, {"brand": "Byond", "sellerId": "2fd6ca6c23a14554", "sellerName": "ARYANCARE", "kam": "Imran"}, {"brand": "Muscle Performance", "sellerId": "7e2b98e0e14a4791", "sellerName": "PsvmLifescience", "kam": "Unassigned"}, {"brand": "naiduhall", "sellerId": "b135dfc9aa6c419b", "sellerName": "VNHNaiduhall", "kam": "Alankrita"}, {"brand": "Wholicious", "sellerId": "501c0e928f684f16", "sellerName": "vitalproconsumer", "kam": "Priyanshu"}, {"brand": "Chokhi Dhani", "sellerId": "1cf97a4ec9544a49", "sellerName": "ChokhiDhaniFoods", "kam": "Unassigned"}, {"brand": "Tressential", "sellerId": "820db8d6ae034774", "sellerName": "Tressential", "kam": "Unassigned"}, {"brand": "Strong Nation", "sellerId": "7bf950cde05e4841", "sellerName": "Truepharmwellnessllp", "kam": "Priyanshu"}, {"brand": "Supply6", "sellerId": "08c5bcc83f294d0d", "sellerName": "Kanari Nutrition", "kam": "Asif"}, {"brand": "Arvind Prakashan", "sellerId": "20b9ebd960ed4e47", "sellerName": "arvindprakashan", "kam": "Rajnish"}, {"brand": "Owny", "sellerId": "dc1c7da203f14721", "sellerName": "OWNYBRANDS", "kam": "Harshita"}, {"brand": "Balwaan Krishi", "sellerId": "52968d239e414e44", "sellerName": "BalwaanKrishi", "kam": "Rajnish"}, {"brand": "Nutriorg", "sellerId": "56e9f42d43c54cfc", "sellerName": "ANANTASVASTHA", "kam": "Ranjeet"}, {"brand": "Irida Naturals", "sellerId": "799c81d2275b4c90", "sellerName": "IRIDANATURALS", "kam": "Ruchi"}, {"brand": "Gebet", "sellerId": "92b4fc8b079e497b", "sellerName": "GEBET", "kam": "Dhwani"}, {"brand": "relook industries", "sellerId": "a88c29f7659049cb", "sellerName": "RKTRADINGINDUSTRIES", "kam": "Adithya"}, {"brand": "famyo", "sellerId": "f9c369ed81b744c3", "sellerName": "Famyo", "kam": "Dhwani"}, {"brand": "Ambitieux", "sellerId": "ee52bf5d31bc4287", "sellerName": "karunenterprises", "kam": "Unassigned"}, {"brand": "Sweet Spot", "sellerId": "d687f3263bad44c0", "sellerName": "RevelationsBiotech", "kam": "Danamma"}, {"brand": "REIKI CRYSTAL PRODUCTS", "sellerId": "6486b2ef7afc4b93", "sellerName": "Reiki Crystal Products", "kam": "Ruchi"}, {"brand": "TheVedicLab", "sellerId": "673e789906ff4cf3", "sellerName": "TheVedicLab", "kam": "Unassigned"}, {"brand": "bellamy", "sellerId": "bdb6c126acdb40aa", "sellerName": "NOVUSLIFESTYLE", "kam": "Unassigned"}, {"brand": "Craftberry", "sellerId": "ef8d584623284166", "sellerName": "Tiger Retail", "kam": "Dhwani"}, {"brand": "Herbal deck", "sellerId": "6d9dc01e7ab44970", "sellerName": "HERBALDECK", "kam": "Dhwani"}, {"brand": "Auto-On", "sellerId": "8a164806ff8d4925", "sellerName": "Auto-On", "kam": "Archana"}, {"brand": "Mozafia", "sellerId": "2c4fe62348b947db", "sellerName": "Mozafia", "kam": "Unassigned"}, {"brand": "olivlife", "sellerId": "0e85d638d92d4fff", "sellerName": "JainishEntertainment", "kam": "Adithya"}, {"brand": "ASSURE", "sellerId": "e0487d01e0b74b89", "sellerName": "AbhayHealthtech", "kam": "Danamma"}, {"brand": "The wallet store", "sellerId": "786c6eec6cb749c7", "sellerName": "GiffyInfotechPvtLtd", "kam": "Ruchi"}, {"brand": "Axoralife", "sellerId": "8531f0a2b6874a8e", "sellerName": "Axoralife", "kam": "Unassigned"}, {"brand": "A-Tape", "sellerId": "6462d9516a5b467c", "sellerName": "Agamproducts", "kam": "Dhwani"}, {"brand": "Phab", "sellerId": "2324c430c68e4d78", "sellerName": "SimplInnovateBrands", "kam": "Alankrita"}, {"brand": "SAANWRI", "sellerId": "29d717a73ad948d1", "sellerName": "SVVAR", "kam": "Danamma"}, {"brand": "Frissly organics", "sellerId": "7191cc707b32471c", "sellerName": "FrisslyOrganics", "kam": "Adithya"}, {"brand": "The Global Genie", "sellerId": "debe4a5a48ec4b37", "sellerName": "TheGlobalGenieUSA", "kam": "Danamma"}, {"brand": "Home Tree", "sellerId": "0b0b01cc97c24d64", "sellerName": "Home Tree Enterprises", "kam": "Unassigned"}, {"brand": "Callidus Care", "sellerId": "5912813f26874d0b", "sellerName": "BellonistVenturesPrivateLimited", "kam": "Unassigned"}, {"brand": "Mary JO K", "sellerId": "ebed3a999e4f47b2", "sellerName": "PNDInternational", "kam": "Alankrita"}, {"brand": "Sujata Ayurvedic Pharmacy", "sellerId": "6d606da22b654023", "sellerName": "Sujata Ayurvedic Pharmacy", "kam": "Unassigned"}, {"brand": "cyae", "sellerId": "d137fa10f88542db", "sellerName": "Cyae", "kam": "Priyanshu"}, {"brand": "bebe burp", "sellerId": "a4c432f0a7d34e15", "sellerName": "Bebe Burp", "kam": "Ranjeet"}, {"brand": "SONPUSH", "sellerId": "209486cbfede47ab", "sellerName": "SONPUSH", "kam": "Asif"}, {"brand": "SAFFR'N", "sellerId": "9c5ba37b84fa4ca7", "sellerName": "Saffrn", "kam": "Dhwani"}, {"brand": "muscle dominator", "sellerId": "33d1f8faf06842bf", "sellerName": "MUSCLEDOMINATORPVTLTD", "kam": "Asif"}, {"brand": "FRASMETICS", "sellerId": "47fd8f4d44ca4665", "sellerName": "FRASMETICS", "kam": "Dhwani"}, {"brand": "BharatVolt", "sellerId": "d314cb28191c4dd5", "sellerName": "BharatVolt", "kam": "Asif"}, {"brand": "Luvyh", "sellerId": "3b91b875c58b4762", "sellerName": "LuvyhEcom", "kam": "Pratisha"}, {"brand": "Miduty", "sellerId": "ad79bb9fb8934de7", "sellerName": "MIDVISION", "kam": "Alankrita"}, {"brand": "The weave traveller", "sellerId": "953a3de54f45465f", "sellerName": "THEWEAVETRAVELLER", "kam": "Unassigned"}, {"brand": "Green Blossoms", "sellerId": "393ec562f5b24822", "sellerName": "GreenBlossom", "kam": "Unassigned"}, {"brand": "Beyond The Sugar", "sellerId": "e768d8a9498d448f", "sellerName": "SELLERSETUPPVTLTD", "kam": "Priyanshu"}, {"brand": "Alex Daisy", "sellerId": "80526341aa8846cd", "sellerName": "AlexDaisy", "kam": "Akansha"}, {"brand": "Truesnap", "sellerId": "9de3a327928f4eb7", "sellerName": "Truesnap", "kam": "Akansha"}, {"brand": "Aromatico", "sellerId": "1de802bdebe143ef", "sellerName": "AFRIYANA", "kam": "Imran"}, {"brand": "Biotane", "sellerId": "5c1d4b7f35474585", "sellerName": "BiotaneNaturals", "kam": "Akansha"}, {"brand": "U&F", "sellerId": "vbp4tfjqzosdgseq", "sellerName": "UniqueFashion", "kam": "Unassigned"}, {"brand": "NextZen100", "sellerId": "704f5d3655fb415a", "sellerName": "NextZen100", "kam": "Unassigned"}, {"brand": "HIMMUS FASHION HUB", "sellerId": "3e80a33ee5d845c9", "sellerName": "HimmusFashionHub", "kam": "Unassigned"}, {"brand": "Rishi Rudraksha", "sellerId": "36bed87bafcb4f06", "sellerName": "RishiRudraksh", "kam": "Jai"}, {"brand": "UNSTD", "sellerId": "58a7337610db468b", "sellerName": "Toodleplus", "kam": "Jai"}, {"brand": "Greenviv", "sellerId": "6136f3bed5d84c56", "sellerName": "GREENVIV", "kam": "Imran"}, {"brand": "Air Roma Home", "sellerId": "2d4b5ec421124bc7", "sellerName": "MCLIndia", "kam": "Goutami"}, {"brand": "Golden Tree", "sellerId": "78a388e3ac7f4a5f", "sellerName": "Vedic Essentials", "kam": "Dhwani"}, {"brand": "truTRTL", "sellerId": "3a46544a5d004dd0", "sellerName": "DigicartIndia", "kam": "Unassigned"}, {"brand": "Wild Oak", "sellerId": "c21cc67cb6064e92", "sellerName": "WildOak", "kam": "Dhwani"}, {"brand": "FreshLuxe", "sellerId": "014a74f8c3cd49b2", "sellerName": "FreshLuxe", "kam": "Dhwani"}, {"brand": "Bhishma", "sellerId": "2b79740bab5c4458", "sellerName": "Bhishma", "kam": "Asif"}, {"brand": "now foods", "sellerId": "82bcd9cc192d4adc", "sellerName": "HebronStoreIndia", "kam": "Alankrita"}, {"brand": "Amrutveni", "sellerId": "f1bf0811669f453a", "sellerName": "SahyadriBioLabspvtltd", "kam": "Pratisha"}, {"brand": "HRNT", "sellerId": "5a84d1c629d14921", "sellerName": "K.K International", "kam": "Rajnish"}, {"brand": "MEBORO", "sellerId": "2eb568c6853e4c81", "sellerName": "RSALIFESTYLESLL", "kam": "Rajnish"}, {"brand": "Menthodex", "sellerId": "27adeee8d4ee42be", "sellerName": "DoshiLaboratories", "kam": "Vaagdevi"}, {"brand": "Microbiome labs", "sellerId": "82bcd9cc192d4adc-", "sellerName": "HebronStoreIndia", "kam": "Alankrita"}, {"brand": "Little Pea", "sellerId": "c8485079f4e047b7", "sellerName": "Little Pea", "kam": "Pratisha"}, {"brand": "creeva", "sellerId": "6d78a91947f846cf", "sellerName": "Softek", "kam": "Ruchi"}, {"brand": "MediSuperDry", "sellerId": "93283713f0614e3d", "sellerName": "Primarc Pecan Retail", "kam": "Alankrita"}, {"brand": "Hello Friend Books", "sellerId": "ede4c4ba874249ba", "sellerName": "Hello Friend Books", "kam": "Rajnish"}, {"brand": "GlowBareSkin", "sellerId": "39604b35fc384e06", "sellerName": "GlowbareSkin", "kam": "Unassigned"}, {"brand": "Yait Sports", "sellerId": "1c4fbfc85a17453f", "sellerName": "Greensource", "kam": "Harshita"}, {"brand": "Jwella", "sellerId": "f56d35b9310144c8", "sellerName": "TrendisiaLifestyles", "kam": "Goutami"}, {"brand": "Iksava", "sellerId": "f56d35b9310144c8-", "sellerName": "TrendisiaLifestyles", "kam": "Goutami"}, {"brand": "Clapstore Toys", "sellerId": "ef0aa7f67b4e477b", "sellerName": "ClapstoreToys", "kam": "Pratisha"}, {"brand": "yourg", "sellerId": "c77a3010867f448d", "sellerName": "yourG", "kam": "Alankrita"}, {"brand": "DNY", "sellerId": "b95b085268214b7c", "sellerName": "2BUY1CLICK", "kam": "Asif"}, {"brand": "Bubz", "sellerId": "56a6e35de8684046", "sellerName": "Bubz", "kam": "Unassigned"}, {"brand": "sugar.fit", "sellerId": "557a324aadc44e18", "sellerName": "SugarfitActivefoods", "kam": "Akansha"}, {"brand": "Tofty", "sellerId": "f0d081589cfa496b", "sellerName": "Tofty", "kam": "Unassigned"}, {"brand": "Nami", "sellerId": "aabb71d5e50448a3", "sellerName": "NAMIBRAND", "kam": "Asif"}, {"brand": "AniGlow Professional", "sellerId": "a310332735a24caf", "sellerName": "ANIGLOW", "kam": "Pratisha"}, {"brand": "Bajaj Vacco", "sellerId": "ix0bd0p2grda8f5b", "sellerName": "BAJAJVACCO", "kam": "Dhwani"}, {"brand": "My Green Aura", "sellerId": "645c773887364dd5", "sellerName": "GREENAURAIN", "kam": "Asif"}, {"brand": "Natuur", "sellerId": "89c20ed9093e4ea6", "sellerName": "NATUUR INDIA", "kam": "Pratisha"}, {"brand": "Amirtha Fashion", "sellerId": "d6a172ad081e4292", "sellerName": "AMIRTHA FASHION", "kam": "Vaagdevi"}, {"brand": "Luker", "sellerId": "d991a9561f80450e", "sellerName": "PolyRetail", "kam": "Asif"}, {"brand": "Zookeeper", "sellerId": "a8a9eb2b09394492", "sellerName": "Zookeeper", "kam": "Pratisha"}, {"brand": "Revaa", "sellerId": "a7b022a1c105403b", "sellerName": "Femelle", "kam": "Pratisha"}, {"brand": "Mantittude", "sellerId": "524795ccbee54360", "sellerName": "Mantittude", "kam": "Vaagdevi"}, {"brand": "NOOHSAY", "sellerId": "7b007335b58940d1", "sellerName": "NOOHSAY", "kam": "Unassigned"}, {"brand": "Cilicant", "sellerId": "93283713f0614e3d-", "sellerName": "CILICANTPRIVATELIMITED", "kam": "Alankrita"}, {"brand": "Upvan", "sellerId": "9a40f8e0ac5f4eac", "sellerName": "UpvanAgro", "kam": "Harshita"}, {"brand": "Damru", "sellerId": "dee991f5074749f7", "sellerName": "DamruEnterprises", "kam": "Akansha"}, {"brand": "Skin elements", "sellerId": "9a6ff81880f24acb", "sellerName": "SolidusLife", "kam": "Danamma"}, {"brand": "EYEWEAR LABS", "sellerId": "ed27b4d2107f4ba9", "sellerName": "EYEWEARLABSINNOVATIONS", "kam": "Unassigned"}, {"brand": "natch", "sellerId": "69bc280b0cc24305", "sellerName": "natch", "kam": "Unassigned"}, {"brand": "Wanna Party", "sellerId": "3efdf09161204900", "sellerName": "WannaParty", "kam": "Unassigned"}, {"brand": "Syntro", "sellerId": "b1553f16279b4485", "sellerName": "SyntroAppliances", "kam": "Asif"}, {"brand": "SUBTRACT", "sellerId": "74c8449805f14aad", "sellerName": "SUBTRACT", "kam": "Pratisha"}, {"brand": "Terrofab", "sellerId": "477051cdef3849b3", "sellerName": "TERROFAB", "kam": "Unassigned"}, {"brand": "Blep", "sellerId": "f13ba1a1139949a8", "sellerName": "BLEP", "kam": "Vaagdevi"}, {"brand": "AM Shop", "sellerId": "61030a22aa754bab", "sellerName": "", "kam": "Unassigned"}, {"brand": "Bakers", "sellerId": "0e710ae1a1e44892", "sellerName": "PluuginEcom", "kam": "Asif"}, {"brand": "HERBOCLEANZ", "sellerId": "b9d619387e244cae", "sellerName": "HERBOCLEANZ", "kam": "Unassigned"}, {"brand": "Svarasya", "sellerId": "7a2b7cfd9e354c82", "sellerName": "Svarasya", "kam": "Unassigned"}, {"brand": "Otica", "sellerId": "a54954d0f93e4aed", "sellerName": "OticaHealthcarePvtLtd", "kam": "Jai"}, {"brand": "FitFeast", "sellerId": "eded7f7f1a9b4096", "sellerName": "FitFeast", "kam": "Alankrita"}, {"brand": "Supafuelz", "sellerId": "e4494f21dd274986", "sellerName": "Supafuelz", "kam": "Akansha"}, {"brand": "Evora Greens", "sellerId": "0ea1be63c26441b7", "sellerName": "EvoraGreens", "kam": "Unassigned"}, {"brand": "Green shield nutricare", "sellerId": "c12dbe8e05fe4e24", "sellerName": "GreenshieldNutricare", "kam": "Vaagdevi"}, {"brand": "Vitagoli", "sellerId": "e6e1a2718f474496", "sellerName": "Vitagoli", "kam": "Akansha"}, {"brand": "Snugkins", "sellerId": "82fc5e8261a84439", "sellerName": "Snugkins", "kam": "Unassigned"}, {"brand": "eiq - einsteiniq", "sellerId": "07c2f25e321e40e5", "sellerName": "EINSTEINIQINTERNATIONAL", "kam": "Unassigned"}, {"brand": "BLEAT", "sellerId": "8ed7d1ba45e74de9", "sellerName": "BLEAT", "kam": "Unassigned"}, {"brand": "LEDO", "sellerId": "09859b335691499b", "sellerName": "LedoEnterprises", "kam": "Unassigned"}, {"brand": "Nysa", "sellerId": "e887559c732841a6", "sellerName": "NysaBySumangali", "kam": "Vaagdevi"}, {"brand": "Tharunsha Elite", "sellerId": "a9726052d2f240b4", "sellerName": "TharunshaElite", "kam": "Asif"}, {"brand": "Airpro", "sellerId": "6f90b58281d24aae", "sellerName": "AIRPRO", "kam": "Alankrita"}, {"brand": "Maze Comics", "sellerId": "f0e30b39ce9d4506", "sellerName": "Mazhecomics", "kam": "Unassigned"}, {"brand": "HSHealthStore", "sellerId": "f3b7d79a447a474d", "sellerName": "HSHealthStore", "kam": "Vaagdevi"}, {"brand": "SpiceUpFood", "sellerId": "8d03c0023cc8437d", "sellerName": "", "kam": "Goutami"}, {"brand": "Ruskle", "sellerId": "a318627dc2c0454f", "sellerName": "Ruskle", "kam": "Alankrita"}, {"brand": "Fast&up", "sellerId": "6214fa2a5efe445e", "sellerName": "FastandUp", "kam": "Pratisha"}, {"brand": "Chicnutrix", "sellerId": "6214fa2a5efe445e-", "sellerName": "FastandUp", "kam": "Pratisha"}, {"brand": "Agam", "sellerId": "6462d9516a5b467c-", "sellerName": "Agamproducts", "kam": "Dhwani"}, {"brand": "Chuk", "sellerId": "b42790e7b3954754", "sellerName": "Chukitnow", "kam": "Ruchi"}, {"brand": "Bamboo India", "sellerId": "c72a090b499f40a1", "sellerName": "", "kam": "Vaagdevi"}, {"brand": "Motherland", "sellerId": "07475f85a45546e7", "sellerName": "", "kam": "Pratisha"}, {"brand": "Herbodaya", "sellerId": "da42f441560e4634", "sellerName": "Herbodaya", "kam": "Unassigned"}, {"brand": "Akayu", "sellerId": "ff5ed9199f034f32", "sellerName": "ASHPVEDA", "kam": "Adithya"}, {"brand": "Sahu Gajak Bhandar", "sellerId": "26be176a006c4edb", "sellerName": "SahuGajakBhandar", "kam": "Adithya"}, {"brand": "Plexx", "sellerId": "21b516fc359048c4", "sellerName": "PlexxInternational", "kam": "Unassigned"}, {"brand": "axion", "sellerId": "8a551fd76c56409d", "sellerName": "AxionBags", "kam": "Unassigned"}, {"brand": "orient", "sellerId": "d584181602054241", "sellerName": "Primetrenzy", "kam": "Priyanshu"}, {"brand": "Deyga", "sellerId": "c9b3d34d0c224625", "sellerName": "Deyga Organics", "kam": "Asif"}, {"brand": "Fingers", "sellerId": "2aab8cf1f98b4d04", "sellerName": "FINGERS 2020", "kam": "Yash"}, {"brand": "Tittli", "sellerId": "71f3b91072ad40bd", "sellerName": "Tittli", "kam": "Harshita"}, {"brand": "Savanta", "sellerId": "4ee29bc7c9db43df", "sellerName": "AVTRADERSAYURVEDIC", "kam": "Goutami"}, {"brand": "kcofoil", "sellerId": "56d2147001ec40fe", "sellerName": "KCOOverseas", "kam": "Dhwani"}, {"brand": "Millex", "sellerId": "2568dacc85f44881", "sellerName": "SAMANAMFOODSPVTLTD", "kam": "Harshita"}, {"brand": "Buildskill", "sellerId": "70e806933c83436c", "sellerName": "Buildskill", "kam": "Asif"}, {"brand": "SD STANDALONE", "sellerId": "7bb6059652de43cd", "sellerName": "SDSTANDALONE", "kam": "Asif"}, {"brand": "Blessy", "sellerId": "6b95001ab02a4385", "sellerName": "BlessyPotStands", "kam": "Asif"}, {"brand": "Primal Gray", "sellerId": "9301a92b9f684148", "sellerName": "Primal Gray", "kam": "Vaagdevi"}, {"brand": "India henna", "sellerId": "1e20a14ca1c24d81", "sellerName": "HENNAINDUSTIES", "kam": "Vaagdevi"}, {"brand": "Parry's", "sellerId": "05fd3deab0f94f79", "sellerName": "PARRYAGRO", "kam": "Asif"}, {"brand": "Skinaa", "sellerId": "45b31971300d4ca0", "sellerName": "Skinaa", "kam": "Pratisha"}, {"brand": "jaipan", "sellerId": "959821184730489b", "sellerName": "DMTechnology", "kam": "Alankrita"}, {"brand": "gropure organic", "sellerId": "41b9c0a860194a9b", "sellerName": "GroPure", "kam": "Adithya"}, {"brand": "samsara", "sellerId": "ae590d802e754e9d", "sellerName": "KISHORAGRO", "kam": "Adithya"}, {"brand": "origins Natura", "sellerId": "93283713f0614e3d-", "sellerName": "origins Natura", "kam": "Alankrita"}, {"brand": "Phitku", "sellerId": "03729280822d4263", "sellerName": "Phitku", "kam": "Pratisha"}, {"brand": "10 on tissues", "sellerId": "ed560c3f65c34f88", "sellerName": "10on", "kam": "Ranjeet"}, {"brand": "Coralista", "sellerId": "ae9a42edb3b44b2a", "sellerName": "Globlegrove", "kam": "Imran"}, {"brand": "gomytoy", "sellerId": "d8ec0ba2d6674636", "sellerName": "Gomytoy", "kam": "Priyanshu"}, {"brand": "purferme project", "sellerId": "1c050465b8a54e70", "sellerName": "purferme project", "kam": "Goutami"}, {"brand": "DA Rake", "sellerId": "f16eb2c197b34ae0", "sellerName": "DARAKELUXEZ", "kam": "Adithya"}, {"brand": "Deya care", "sellerId": "cdca3be75a1c4bfb", "sellerName": "PRISTINEDEYACARE", "kam": "Vaagdevi"}, {"brand": "Frudo", "sellerId": "1f6b39a9af564eb6", "sellerName": "Frudo", "kam": "Vaagdevi"}, {"brand": "Nimisha Impex worldwide pvt ltd", "sellerId": "32a8621b976048b7", "sellerName": "Nimisha Impex worldwide pvt ltd", "kam": "Vaagdevi"}, {"brand": "Yesganic", "sellerId": "f0d7a2eec8034f20", "sellerName": "YesganicFoods", "kam": "Goutami"}, {"brand": "ironmate", "sellerId": "35b4a7ce9fa14cf0", "sellerName": "Parintha", "kam": "Asif"}, {"brand": "Bare necessities", "sellerId": "2234861dd29f46da", "sellerName": "BareNecessities", "kam": "Danamma"}, {"brand": "The Snack Company", "sellerId": "340e6561e97e46f2", "sellerName": "The Snack Company", "kam": "Pratisha"}, {"brand": "ClearCut", "sellerId": "a0a6c83f5a2746ef", "sellerName": "SudnyaHealth", "kam": "Jai"}, {"brand": "Global senate", "sellerId": "010ea2e339254e0a", "sellerName": "", "kam": "Alankrita"}, {"brand": "Glutone", "sellerId": "93283713f0614e3d-", "sellerName": "", "kam": "Alankrita"}, {"brand": "Aka chic", "sellerId": "fe3fzoam7teynhtv", "sellerName": "", "kam": "Alankrita"}, {"brand": "Allucos", "sellerId": "fa384161c19a42c3", "sellerName": "dealerkart", "kam": "Harshita"}, {"brand": "kid gets stationery", "sellerId": "6edfbdf895de469f", "sellerName": "", "kam": "Rajnish"}, {"brand": "Nutri hut", "sellerId": "aacdb6ae4db1493e", "sellerName": "NutriHutOrganic", "kam": "Ruchi"}, {"brand": "8AM", "sellerId": "14f906151527476b", "sellerName": "8AM", "kam": "Ruchi"}, {"brand": "NARIYALCOSMETICS", "sellerId": "e5a814999c2e4942", "sellerName": "NARIYALCOSMETICS", "kam": "Adithya"}, {"brand": "Reboot", "sellerId": "c226103cfc2e4701", "sellerName": "J K ENTERPRISES", "kam": "Rajnish"}, {"brand": "TriQ Pharma", "sellerId": "11e6be5b57714c02", "sellerName": "TRIQPHARMACEUTICALS", "kam": "Pratisha"}, {"brand": "Provogue", "sellerId": "8ee45d33c0dc46cf", "sellerName": "Provogue", "kam": "Dhwani"}, {"brand": "Tiwari's", "sellerId": "4f694d4dd0d046df", "sellerName": "TIWARISIMPEX", "kam": "Adithya"}, {"brand": "Lickcious", "sellerId": "247e40973b36427c", "sellerName": "Lickcious", "kam": "Dhwani"}, {"brand": "Flaunt your ink", "sellerId": "4bac6d90e8fe4377", "sellerName": "FlauntYourInk", "kam": "Adithya"}, {"brand": "Kilrr", "sellerId": "b8ece6d3bbd54481", "sellerName": "KILRR", "kam": "Vaagdevi"}, {"brand": "jollytime", "sellerId": "5fc3571afebd48a4", "sellerName": "BharatRiceOilMills", "kam": "Vaagdevi"}, {"brand": "Soraa", "sellerId": "5763c048f2c1413f", "sellerName": "SHREEMGLOBALSPICEANDNUTSPRIVATELIMITED", "kam": "Rajnish"}, {"brand": "snacc", "sellerId": "d612cf771aed432b", "sellerName": "AROSONFOODSPVTLTD", "kam": "Harshita"}, {"brand": "Muddy water co", "sellerId": "cf0fb972107a4ab5", "sellerName": "MuddyWater", "kam": "Adithya"}, {"brand": "jim fashion", "sellerId": "73a63c24170e4232", "sellerName": "JIMFASHION", "kam": "Akansha"}, {"brand": "Olevs", "sellerId": "e9e0e5de430e4126", "sellerName": "KrishnaEnterprise19951", "kam": "Rajnish"}, {"brand": "Navdana", "sellerId": "7c51f68ffe784e81", "sellerName": "Navdana", "kam": "Alankrita"}, {"brand": "Fabbarries", "sellerId": "d2f2c2a601974f95", "sellerName": "BABEN004", "kam": "Priyanshu"}, {"brand": "TENER", "sellerId": "6f89ebe4ed954975", "sellerName": "TENER", "kam": "Adithya"}, {"brand": "FoodRX", "sellerId": "9fd2047aa0f44fe6", "sellerName": "TheFoodRX", "kam": "Priyanshu"}, {"brand": "Protozone", "sellerId": "957f915387fc4399", "sellerName": "PROTOZONEHOME", "kam": "Danamma"}, {"brand": "INMYO", "sellerId": "2a0207ec7e7b4134", "sellerName": "INMYO", "kam": "Ranjeet"}, {"brand": "Rudraksh Hub", "sellerId": "0b8e8f0536854aee", "sellerName": "RURDRAKSHHUB", "kam": "Akansha"}, {"brand": "cureforever", "sellerId": "dc37d3125f4448c1", "sellerName": "CureForever", "kam": "Goutami"}, {"brand": "Rungta's", "sellerId": "c131ffaa5b0248b3", "sellerName": "GREENBEVERAGES", "kam": "Dhwani"}, {"brand": "Vernix", "sellerId": "ac8c86b9bf1346e8", "sellerName": "Vernix", "kam": "Danamma"}, {"brand": "Glassiano", "sellerId": "a6639d04f0414afe", "sellerName": "Glassiano", "kam": "Danamma"}, {"brand": "Aadvika", "sellerId": "6b8678ce2d434141", "sellerName": "Aadvika", "kam": "Rajnish"}, {"brand": "Le Dore", "sellerId": "335b8a741cf4482d", "sellerName": "RadiusWellness", "kam": "Dhwani"}, {"brand": "Eco alpine appliances", "sellerId": "e34e458841a1442a", "sellerName": "NoviciusBrands", "kam": "Akansha"}, {"brand": "MORPA", "sellerId": "df624cb9cb3d4478", "sellerName": "Natrajthetastemaker", "kam": "Dhwani"}, {"brand": "HOMBRIA", "sellerId": "a5a7defdd88f4d16", "sellerName": "HOMBRIA", "kam": "Dhwani"}, {"brand": "Imagimake", "sellerId": "cr8vfxu6ad4xcpu3", "sellerName": "TheBestToyCompany", "kam": "Vaagdevi"}, {"brand": "Ayumcure", "sellerId": "0e689274c1c042d4", "sellerName": "AYUMCUREHERBSPRIVATELIMITED", "kam": "Harshita"}, {"brand": "Urban Pallu", "sellerId": "6b8678ce2d434141-", "sellerName": "Fabwomen", "kam": "Rajnish"}, {"brand": "Wellwith", "sellerId": "d26e7215952c4a9e", "sellerName": "WellwithindiaPvtLtd", "kam": "Pratisha"}, {"brand": "Hotkei", "sellerId": "m91pkcnzpoeianmm", "sellerName": "Anduril", "kam": "Danamma"}, {"brand": "Myoz", "sellerId": "53985845f39f4fc5", "sellerName": "MYOZ", "kam": "Danamma"}, {"brand": "Glucorx", "sellerId": "a5d3cf078ac24279", "sellerName": "Glucorx", "kam": "Alankrita"}, {"brand": "Gobinkies", "sellerId": "133174eca3df4bb2", "sellerName": "GoBinkies", "kam": "Ranjeet"}, {"brand": "FebElvn", "sellerId": "74703ddc796b4329", "sellerName": "FebElvn", "kam": "Pratisha"}, {"brand": "HomeMax", "sellerId": "baee0f645c664af8", "sellerName": "HomeMax", "kam": "Unassigned"}, {"brand": "Skoodle", "sellerId": "b2fbb9d007554d8b", "sellerName": "GOLDENFEELINGHUB", "kam": "Unassigned"}, {"brand": "Xinng Foods", "sellerId": "762eda2d687c42e8", "sellerName": "Xinng Foods", "kam": "Vaagdevi"}, {"brand": "NEWISH", "sellerId": "9ccfe15d39e04774", "sellerName": "KharesiyaBrands", "kam": "Danamma"}, {"brand": "Minister White", "sellerId": "d1f153f36acf480f", "sellerName": "MinisterWhite", "kam": "Goutami"}, {"brand": "StysolMall", "sellerId": "cc7f9ebc3d8a44bd", "sellerName": "StysolGroupofIndustries", "kam": "Danamma"}, {"brand": "Samkins", "sellerId": "588127b16fce4fec", "sellerName": "SAMKINSTOYS", "kam": "Ruchi"}, {"brand": "Bubble me", "sellerId": "b8fd35f63c8a43b9", "sellerName": "BubbleMe", "kam": "Adithya"}, {"brand": "Moody", "sellerId": "362780b12afc4f2f", "sellerName": "RASLuxuryOils", "kam": "Adithya"}, {"brand": "Suwasthi", "sellerId": "919c5894db3842be", "sellerName": "NippiOrganics", "kam": "Vaagdevi"}, {"brand": "NUTRASIUM", "sellerId": "567883602bfc4ab4", "sellerName": "Nutrasium", "kam": "Akansha"}, {"brand": "PRO360", "sellerId": "b001c51fc759421c", "sellerName": "GMNHEALTHCARE", "kam": "Imran"}, {"brand": "Kerala Thingz", "sellerId": "f0fa49081b9e477e", "sellerName": "KERALATHINGZ", "kam": "Dhwani"}, {"brand": "The Old Natural", "sellerId": "09c8f5d2c07a4dfe", "sellerName": "TheOldNatural", "kam": "Akansha"}, {"brand": "Theater", "sellerId": "52739565197d4417", "sellerName": "TheaterApparel", "kam": "Vaagdevi"}, {"brand": "Bath & Beauty", "sellerId": "2d4f0444fab34303", "sellerName": "BathAndBeauty", "kam": "Pratisha"}, {"brand": "Yes", "sellerId": "fbfc974d69084c55", "sellerName": "TLLElementsPrivateltd", "kam": "Harshita"}, {"brand": "Malu Healthcare", "sellerId": "e40bc921e0e345d1", "sellerName": "MaluHealthcare", "kam": "Ranjeet"}, {"brand": "ATOG", "sellerId": "93283713f0614e3d-", "sellerName": "Primarc Pecan Retail", "kam": "Alankrita"}, {"brand": "Thela Gaadi", "sellerId": "48677cfc08d34c3c", "sellerName": "ThelaGaadiIn", "kam": "Imran"}, {"brand": "Rustic Town", "sellerId": "lc8x4wi1x4hr0fbw", "sellerName": "Rustic Town", "kam": "Vaagdevi"}, {"brand": "Olivia", "sellerId": "2c2d02c604b54770", "sellerName": "OliviaBeauty", "kam": "Adithya"}, {"brand": "the body reserve", "sellerId": "d868948094eb4842", "sellerName": "Neuotics", "kam": "Pratisha"}, {"brand": "Skillmatics", "sellerId": "2ee7c32d76c94a73", "sellerName": "Skillmatics", "kam": "Alankrita"}, {"brand": "Stysol", "sellerId": "9195aad37e894104", "sellerName": "StysolDirect", "kam": "Danamma"}, {"brand": "Jambira", "sellerId": "501a317290e74c83", "sellerName": "DWIPRETAIL", "kam": "Ruchi"}, {"brand": "Teinpro", "sellerId": "3f3644becc2c4972", "sellerName": "TEINPRO", "kam": "Adithya"}, {"brand": "Trumax", "sellerId": "56cbd18a901f4486", "sellerName": "TrumaxSupplement", "kam": "Akansha"}, {"brand": "Ceuticoz", "sellerId": "8fc7702db6884c6c", "sellerName": "Ceuticoz", "kam": "Pratisha"}, {"brand": "Hexa Red", "sellerId": "8729366e312b4705", "sellerName": "HexaRed", "kam": "Vaagdevi"}, {"brand": "Doodle", "sellerId": "ohiv4l2tefiaq11d", "sellerName": "Doodle", "kam": "Alankrita"}, {"brand": "Atharv", "sellerId": "59396a263692442d", "sellerName": "ATHARVANDCOMPANYY", "kam": "Harshita"}, {"brand": "Dadu Fresh", "sellerId": "1bd648bc35e54ec8", "sellerName": "DaduOrganicFood", "kam": "Dhwani"}, {"brand": "HomeBrew", "sellerId": "60ced201a7694421", "sellerName": "PiyuHomeFurnishing", "kam": "Danamma"}, {"brand": "PBpow", "sellerId": "6cd23d4b644145ae", "sellerName": "AUSTINFOODSANDBEVERAGES", "kam": "Harshita"}, {"brand": "Smars Jewellery", "sellerId": "44ed05f6ac32411b", "sellerName": "Smars Jewellery", "kam": "Adithya"}, {"brand": "The Sweet Change", "sellerId": "4cc7964a2ba943eb", "sellerName": "The Sweet Change", "kam": "Adithya"}, {"brand": "Darvi", "sellerId": "f9f91727ac3a4077", "sellerName": "DarviLifeStyles", "kam": "Goutami"}, {"brand": "ONEAT", "sellerId": "18e5b1bc76d24df3", "sellerName": "ONEAT", "kam": "Ranjeet"}, {"brand": "Daga Brothers", "sellerId": "0b94e44fd0fd4f22", "sellerName": "DagaBrothersMobile", "kam": "Goutami"}, {"brand": "Gllora", "sellerId": "fa8f06ef79164ab5", "sellerName": "Gllora", "kam": "Vaagdevi"}, {"brand": "evernuts", "sellerId": "e456f9f75e5d40d0", "sellerName": "evernuts", "kam": "Akansha"}, {"brand": "SM Foods", "sellerId": "d647074d0905417e", "sellerName": "SMFoodsHing", "kam": "Akansha"}, {"brand": "The curl co", "sellerId": "8748fda0a7dc4627", "sellerName": "TheCurlCo", "kam": "Adithya"}, {"brand": "Neoddocs", "sellerId": "9d82defe303243b9", "sellerName": "Neodocs", "kam": "Akansha"}, {"brand": "Brightx", "sellerId": "bb90e45c33da4a3c", "sellerName": "BRIGHTXSTAIN", "kam": "Jai"}, {"brand": "Nocap Foods", "sellerId": "451d349897804447", "sellerName": "NoCapFoods", "kam": "Rajnish"}, {"brand": "Clothology", "sellerId": "dbf14ea3f9c44ec6", "sellerName": "AngvarnikaXClothology", "kam": "Vaagdevi"}, {"brand": "hey teen", "sellerId": "cb0dc39802fc458e", "sellerName": "HeyTeen", "kam": "Dhwani"}, {"brand": "Gebet", "sellerId": "92b4fc8b079e497b", "sellerName": "GEBET", "kam": "Dhwani"}, {"brand": "OT India", "sellerId": "24d739795dd54d5e", "sellerName": "OTINDIA", "kam": "Harshita"}, {"brand": "Selloria", "sellerId": "473fea11cec144d6", "sellerName": "Selloria", "kam": "Ruchi"}, {"brand": "Tanyatrapt", "sellerId": "e81a905536994aaa", "sellerName": "Tanyatraptofficial", "kam": "Akansha"}, {"brand": "Yumgo", "sellerId": "aba0d270085d49eb", "sellerName": "Yumgo", "kam": "Akansha"}, {"brand": "Greenkin", "sellerId": "4a60c6fe373445a4", "sellerName": "Greenkin", "kam": "Harshita"}, {"brand": "Dash wellness shots", "sellerId": "9b45474baea643e9", "sellerName": "DASHWellnessShots", "kam": "Adithya"}, {"brand": "Cellucor", "sellerId": "b6000203e3014b56-", "sellerName": "HealthTreasure", "kam": "Jai"}, {"brand": "Synova", "sellerId": "df9b8b3d58114e5b", "sellerName": "LUXOARAMART", "kam": "Vaagdevi"}, {"brand": "ReniSales", "sellerId": "17638856d7d54e93", "sellerName": "ReniSales", "kam": "Rajnish"}, {"brand": "WEAR YOUR OPINION", "sellerId": "5w8qypm59jdypygz", "sellerName": "WearYourOpinion", "kam": "Vaagdevi"}, {"brand": "atovio", "sellerId": "c005b4efd9ff4a6f", "sellerName": "atovio", "kam": "Danamma"}, {"brand": "Vitonnix", "sellerId": "45ed5d4ccdf54f48", "sellerName": "DAVADOST", "kam": "Akansha"}, {"brand": "Purjah", "sellerId": "0ac32714f049418b", "sellerName": "PURJAH", "kam": "Dhwani"}, {"brand": "theinfusedkettle", "sellerId": "d7f2554a9d9c4982", "sellerName": "TheInfusedKettle", "kam": "Ruchi"}, {"brand": "Silwer", "sellerId": "Yet to be created22", "sellerName": "Silwer", "kam": "Imran"}, {"brand": "Claymistry", "sellerId": "4806ea7eb3564c22", "sellerName": "CLAYMISTRYVENTURESPRIVATELIMITED", "kam": "Pratisha"}, {"brand": "Hegan Walk", "sellerId": "c075649c3e5e471d", "sellerName": "ALPHAWALKSERVICESLLP", "kam": "Adithya"}, {"brand": "Amayu", "sellerId": "fd474de1d5124f1a", "sellerName": "AmodFoods", "kam": "Akansha"}, {"brand": "TheYaYaCafe", "sellerId": "876154f6f71a4ef7", "sellerName": "TheYaYaCafe", "kam": "Jai"}, {"brand": "Froot Root", "sellerId": "19c0633f42db4c0e", "sellerName": "FrootRoot", "kam": "Adithya"}, {"brand": "FarrmB", "sellerId": "0598ed72b1c947f6", "sellerName": "FarrmB", "kam": "Priyanshu"}, {"brand": "LR Herbals", "sellerId": "b3451b6002aa4ce5", "sellerName": "LRHERBALS", "kam": "Asif"}, {"brand": "Ayuki", "sellerId": "8b19d4e902a74cf0", "sellerName": "NationalAyurvedaCompany", "kam": "Pratisha"}, {"brand": "Above40", "sellerId": "d22f890b504b4791", "sellerName": "Above40", "kam": "Dhwani"}, {"brand": "JoySpoon", "sellerId": "5bade60b5f794fc0", "sellerName": "ALTERKITCHINDIAPRIVATELIMITED", "kam": "Ruchi"}, {"brand": "The Hummingbird", "sellerId": "d301960170eb412b", "sellerName": "TheHummingbird1", "kam": "Adithya"}, {"brand": "Sweety NX", "sellerId": "10ea869015c74d69", "sellerName": "SAHIBINTERNATIONAL1", "kam": "Goutami"}, {"brand": "Leadstart", "sellerId": "fa86cf0a3eb54307", "sellerName": "Leadstart", "kam": "Ranjeet"}, {"brand": "PopX", "sellerId": "6215a7e9507c4335", "sellerName": "SNSGlobal", "kam": "Pratisha"}, {"brand": "MOODCTRL", "sellerId": "71c94f5ddc374582", "sellerName": "MOODCTRL", "kam": "Ruchi"}, {"brand": "Kharawala's", "sellerId": "fc4c5090defe4da6", "sellerName": "KharawalaDryfruits", "kam": "Goutami"}, {"brand": "Nutracone", "sellerId": "dc943995527b477e", "sellerName": "Elitehealthcare", "kam": "Goutami"}, {"brand": "Mevano", "sellerId": "0a675f53957345dd", "sellerName": "Mevano", "kam": "Priyanshu"}, {"brand": "Official Dapp", "sellerId": "60e619d96a9e4768", "sellerName": "OfficialDapp", "kam": "Goutami"}, {"brand": "Promeal", "sellerId": "423e103066b74aa9", "sellerName": "PromealBiotech", "kam": "Harshita"}, {"brand": "Sakta", "sellerId": "fcc9b52c26c4430f", "sellerName": "SaktaDiva", "kam": "Rajnish"}, {"brand": "MPRO", "sellerId": "90acde831be74b28", "sellerName": "DARABARKING", "kam": "Harshita"}, {"brand": "Tulir", "sellerId": "1d071851364e4f32", "sellerName": "TulirNaturals", "kam": "Pratisha"}, {"brand": "Hunger nuts", "sellerId": "c3a85c7810cc49c2", "sellerName": "AdonAgroCommoditiesLimited", "kam": "Adithya"}, {"brand": "nytarra", "sellerId": "fbfc7dcf5d4f4dcf", "sellerName": "Nytarra", "kam": "Adithya"}, {"brand": "Scentual", "sellerId": "9c3faaa0ab31411d", "sellerName": "ELEGANCIALIFESTYLEPRIVATELIMITED", "kam": "Ruchi"}, {"brand": "Skkinnedit", "sellerId": "ee1aee6b2785467b", "sellerName": "Skkinnedit", "kam": "Goutami"}, {"brand": "silkyfem", "sellerId": "6fb97cbff80145ae", "sellerName": "Silkyfem", "kam": "Danamma"}, {"brand": "Huuso", "sellerId": "8100b79da16d4c24", "sellerName": "HUUSO", "kam": "Goutami"}, {"brand": "Acme Poshan", "sellerId": "11d4a01d4c184c4d", "sellerName": "AcmePoshan", "kam": "Dhwani"}, {"brand": "Himberjoy", "sellerId": "9d509e9176e943f2", "sellerName": "Himberjoy", "kam": "Asif"}, {"brand": "Vanvasi Ayurveda", "sellerId": "5e79848e066e466e", "sellerName": "TEAMWORKUNITEDLLP", "kam": "Ranjeet"}, {"brand": "Bloom Buddy", "sellerId": "e49a8d07f17c4406", "sellerName": "BloomBuddy", "kam": "Asif"}, {"brand": "earthvya", "sellerId": "00a846aef2fd4c52", "sellerName": "AVIORAENTERPRISES", "kam": "Ruchi"}, {"brand": "Surali", "sellerId": "576feaaeb3684927", "sellerName": "SuperStore365", "kam": "Akansha"}, {"brand": "Me & Millets", "sellerId": "19e8f60c97a04331", "sellerName": "NOSH AND NIBBLE", "kam": "Dhwani"}, {"brand": "NYSARG", "sellerId": "e40c0a6573b4492c", "sellerName": "NYSARG", "kam": "Danamma"}, {"brand": "Okamoto", "sellerId": "144a83fb59de4092", "sellerName": "Okamoto", "kam": "Imran"}, {"brand": "Bob and bae", "sellerId": "c95f502342f341f4", "sellerName": "EightyVentures", "kam": "Adithya"}, {"brand": "Nuatrafol", "sellerId": "0fe08b1b3d2b4ae9", "sellerName": "NuatrafolInc", "kam": "Dhwani"}, {"brand": "Paradyes", "sellerId": "1891163da6b843a0", "sellerName": "BirdsOfParadyes", "kam": "Akansha"}, {"brand": "Panini Jewels", "sellerId": "d411ebfa1e5c4d10", "sellerName": "PaniniJewels", "kam": "Danamma"}, {"brand": "Inshine", "sellerId": "9d62f952663d4329", "sellerName": "EurekaMarketing", "kam": "Danamma"}, {"brand": "Arish Bio-Natural", "sellerId": "1adaaacb5dae43be", "sellerName": "ARISHBIONATURAL", "kam": "Alankrita"}, {"brand": "Millet Amma", "sellerId": "580dca77a6524a72", "sellerName": "Millet Amma", "kam": "Imran"}, {"brand": "lovelang", "sellerId": "1891163da6b843a0-", "sellerName": "BirdsOfParadyes", "kam": "Akansha"}, {"brand": "Vraj Prachin Ayurved Chikitsa Kendra", "sellerId": "4f3dfc75f73d4005", "sellerName": "VRAJAYURVEDIC", "kam": "Unassigned"}, {"brand": "ColorFlix", "sellerId": "887ffc50d28f4bc9", "sellerName": "ColorFlix15", "kam": "Ranjeet"}, {"brand": "Zarmi", "sellerId": "d0788cd591c3454c", "sellerName": "ZARMINATRADERS", "kam": "Danamma"}, {"brand": "Nizzz", "sellerId": "02a74baeb37b4673", "sellerName": "Arsalanhk", "kam": "Adithya"}, {"brand": "YplayZ", "sellerId": "d2ebcc4c17fe45df", "sellerName": "YplayZ", "kam": "Adithya"}, {"brand": "The Cinnamon Kitchen", "sellerId": "edfb77d12d454087", "sellerName": "TheCinnamonKitchen", "kam": "Rajnish"}, {"brand": "Pet park", "sellerId": "699b3d2a51bd49b4", "sellerName": "KAPILTRADERSONLINE", "kam": "Vaagdevi"}, {"brand": "Solera", "sellerId": "8e90c69c47ed4368", "sellerName": "Solera", "kam": "Imran"}, {"brand": "Narwal's collection", "sellerId": "3fb876369c0a4faa", "sellerName": "NARWALSCOLLECTION", "kam": "Ruchi"}, {"brand": "Hallmark Safety Products", "sellerId": "61dd82f9f6d3432e", "sellerName": "HallmarkSafetyProducts", "kam": "Harshita"}, {"brand": "Parag Rakhi", "sellerId": "9a726d434bca4cb1", "sellerName": "Shubhkariya", "kam": "Akansha"}, {"brand": "Zumi", "sellerId": "f9aa9406d0494573", "sellerName": "Zumi", "kam": "Pratisha"}, {"brand": "Ramadevi", "sellerId": "e52bee020f854c20", "sellerName": "Ramadevi", "kam": "Ruchi"}, {"brand": "Soni Officemate", "sellerId": "38c453fac1a141ad", "sellerName": "SONIOFFICEMATE", "kam": "Danamma"}, {"brand": "bypurenaturals", "sellerId": "hgepv2tfvvrdki58", "sellerName": "bypurenaturals", "kam": "Imran"}, {"brand": "Ville Style", "sellerId": "cdb2ebf2011448a4", "sellerName": "ExcelBazaar", "kam": "Danamma"}, {"brand": "Naturing", "sellerId": "f02edf0ed4b54b38", "sellerName": "Naturing", "kam": "Ruchi"}, {"brand": "Abeers", "sellerId": "0a2401e5e2704217", "sellerName": "AbeersMarketing", "kam": "Ruchi"}, {"brand": "Vayu Farms", "sellerId": "12d9a74e0a7c465e", "sellerName": "VayuFarms", "kam": "Imran"}, {"brand": "Zen Home", "sellerId": "927d90fc5ae140c0", "sellerName": "ZENHOME", "kam": "Imran"}, {"brand": "Cloth Fusion", "sellerId": "Yet to be created25", "sellerName": "Cloth Fusion", "kam": "Danamma"}, {"brand": "Multica", "sellerId": "bf6ee7c7458b4cf2", "sellerName": "Multica", "kam": "Harshita"}, {"brand": "SaltOralCare", "sellerId": "Yet to be created26", "sellerName": "SaltOralCare", "kam": "Vaagdevi"}, {"brand": "Snubbs", "sellerId": "Yet to be created27", "sellerName": "Snubbs", "kam": "Vaagdevi"}, {"brand": "Husky & Purr", "sellerId": "2b1d40d241044b82", "sellerName": "HuskyAndPurr", "kam": "Unassigned"}, {"brand": "Cedrafil", "sellerId": "9ec47eb0de234110", "sellerName": "Cedrafil", "kam": "Asif"}, {"brand": "Skin Deli", "sellerId": "ab786a696b5e4780", "sellerName": "SKINDELI", "kam": "Akansha"}, {"brand": "Avlokan", "sellerId": "ceab706dc9bf4589", "sellerName": "Avalokan", "kam": "Akansha"}, {"brand": "Girl Factor", "sellerId": "7ae01b94efa141bf", "sellerName": "GirlFactor", "kam": "Ruchi"}, {"brand": "seango", "sellerId": "aa2c72d24fac430a", "sellerName": "seango", "kam": "Pratisha"}, {"brand": "Keva", "sellerId": "72452121fc954d0d", "sellerName": "MaaLaxmiTechCom", "kam": "Pratisha"}, {"brand": "Ariro Kids", "sellerId": "Yet to be created28", "sellerName": "Ariro Kids", "kam": "Adithya"}, {"brand": "BeatO", "sellerId": "bb1c40536f5f40a9", "sellerName": "HEALMORE", "kam": "Ruchi"}, {"brand": "COWBERRY", "sellerId": "cbe9e271519e49c8", "sellerName": "COWBERRY", "kam": "Ruchi"}, {"brand": "Emnutro", "sellerId": "6c2b6ec38a84445c", "sellerName": "Emnutro", "kam": "Akansha"}, {"brand": "TeaFit", "sellerId": "1a4bec90f85d409b", "sellerName": "TeaFit", "kam": "Ruchi"}, {"brand": "Purma", "sellerId": "56cbd18a901f4486", "sellerName": "TrumaxSupplement", "kam": "Akansha"}, {"brand": "Davsorb", "sellerId": "50b0f86f973a476a", "sellerName": "CILICANTPRIVATELIMITED", "kam": "Alankrita"}, {"brand": "Gorilax", "sellerId": "b99a615de04a40d1", "sellerName": "ZonicBrand", "kam": "Priyanshu"}, {"brand": "HomeMax", "sellerId": "a1250776a9e444d8", "sellerName": "HomeMax", "kam": "Danamma"}, {"brand": "Skoodle", "sellerId": "2b61e3bf47844253", "sellerName": "Skoodle Play", "kam": "Alankrita"}, {"brand": "Leadstart", "sellerId": "fa86cf0a3eb54307", "sellerName": "One Point Six Technologies Pvt Ltd", "kam": "Ranjeet"}, {"brand": "Lady Care", "sellerId": "59387fcedf0c4c1c", "sellerName": "Ninetailss", "kam": "Ruchi"}, {"brand": "Bookford", "sellerId": "0a0019a4f4204495", "sellerName": "BookfordClassics", "kam": "Rajnish"}, {"brand": "Soyu", "sellerId": "cd4c5489d1eb47a5", "sellerName": "SoyuNunchi", "kam": "Adithya"}, {"brand": "shesha ayurveda", "sellerId": "d564b401ec9a421a", "sellerName": "SHESHAAYURVEDA", "kam": "Dhwani"}, {"brand": "Missiva", "sellerId": "Yet to be created29", "sellerName": "Missiva", "kam": "Alankrita"}, {"brand": "shivveda", "sellerId": "527ec67080994b9d", "sellerName": "shivveda", "kam": "Danamma"}, {"brand": "Sajiva", "sellerId": "c51f9177f8ab4565", "sellerName": "SAJIVADAIRY", "kam": "Danamma"}, {"brand": "VRPRIME", "sellerId": "e019451d6e794b90", "sellerName": "VRPRIME", "kam": "Priyanshu"}, {"brand": "GiftZoom", "sellerId": "9f93b7f1de9c4f3e", "sellerName": "GiftZoom", "kam": "Pratisha"}, {"brand": "Luggit", "sellerId": "27nsdmroicqegby1", "sellerName": "LUGGIT", "kam": "Ruchi"}, {"brand": "Lifesy Nutra", "sellerId": "cc9b48172ce74b3b", "sellerName": "LIFESYNUTRA", "kam": "Akansha"}, {"brand": "All Rounder", "sellerId": "1214209f6b18448f-", "sellerName": "E-KOMES LLP", "kam": "Rajnish"}, {"brand": "Dhootpapeshwar", "sellerId": "914a56dbf49b48ec", "sellerName": "EmazingDeals", "kam": "Dhwani"}, {"brand": "Herb Tantra", "sellerId": "7cffed102cb04366", "sellerName": "TruerootsImpex", "kam": "Ranjeet"}, {"brand": "Araya Health", "sellerId": "28dac08ac79b4e00", "sellerName": "ArayaHealth", "kam": "Ranjeet"}, {"brand": "Sky Carry", "sellerId": "b386cd98458f4227", "sellerName": "NewJothiStoresLLP", "kam": "Priyanshu"}, {"brand": "PHYSIOGEL", "sellerId": "ba00e3b578f04851", "sellerName": "BLOOMBRIDGERETAIL", "kam": "Harshita"}, {"brand": "Joymax", "sellerId": "235bf09610e14c14", "sellerName": "DPSSINDIAPVTLTD", "kam": "Ruchi"}, {"brand": "Fix my curls", "sellerId": "37a5f79c871b4fb1", "sellerName": "FIXMYCURLS", "kam": "Ruchi"}, {"brand": "Artiscents", "sellerId": "6fa7047a05434334", "sellerName": "Artiscents", "kam": "Ruchi"}, {"brand": "Green stamp", "sellerId": "814df653e9b44792", "sellerName": "GREENSTAMP", "kam": "Pratisha"}, {"brand": "Meltmade", "sellerId": "814df653e9b44792-", "sellerName": "GREENSTAMP", "kam": "Pratisha"}, {"brand": "BETEAYA", "sellerId": "2a8442629159451a", "sellerName": "BETEAYA", "kam": "Vaagdevi"}, {"brand": "Mashki", "sellerId": "de7e93b6df224d04", "sellerName": "MashkiGardens", "kam": "Dhwani"}, {"brand": "HUNGRY KOALA", "sellerId": "2ffd9fb89a9a407c", "sellerName": "HUNGRYKOALA", "kam": "Jai"}, {"brand": "Arunavi", "sellerId": "14e2b384e95a455e", "sellerName": "Arunavi", "kam": "Ruchi"}];
+const ALL_KAMS = ["Adithya", "Akansha", "Alankrita", "Archana", "Asif", "Danamma", "Dhwani", "Goutami", "Harshita", "Imran", "Jai", "Jayant", "Krishna/Pranav", "Pratisha", "Priyanshu", "Rajnish", "Ranjeet", "Ruchi", "Unassigned", "Vaagdevi", "Yash"];
+const VERTICALS = ["Electronics", "Fashion", "Beauty & Personal Care", "Health & Nutrition", "Home & Kitchen", "Sports & Fitness", "Baby & Kids", "Grocery & Food", "Books & Stationery", "Toys & Games"];
+
+let currentBrand = null;
+let currentPeriod = 'daily';
+let salesChartInst = null, shareChartInst = null, oosChartInst = null;
+let currentCampaigns = [];
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+
+  // Set default dates
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(today.getDate() - 30);
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+  document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
+
+  // Populate KAM filter
+  const kamSel = document.getElementById('kamFilter');
+  ALL_KAMS.forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = k;
+    kamSel.appendChild(o);
+  });
+
+  // Populate vertical filter
+  const vSel = document.getElementById('verticalFilter');
+  VERTICALS.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    vSel.appendChild(o);
+  });
+
+  // Populate brand filter
+  populateBrands(ALL_BRANDS);
+});
+
+function populateBrands(brands) {
+  const sel = document.getElementById('brandFilter');
+  sel.innerHTML = '<option value="">Select Brand...</option>';
+  brands.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.brand;
+    o.textContent = b.brand + (b.kam && b.kam !== 'Unassigned' ? ' (' + b.kam + ')' : '');
+    sel.appendChild(o);
+  });
+}
+
+function applyFilters() {
+  const kam = document.getElementById('kamFilter').value;
+  const filtered = kam ? ALL_BRANDS.filter(b => b.kam === kam) : ALL_BRANDS;
+  populateBrands(filtered);
+  document.getElementById('brandFilter').value = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'block';
+}
+
+function setDateRange(period, btn) {
+  currentPeriod = period;
+  document.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const today = new Date();
+  const from = new Date(today);
+  if (period === 'daily') from.setDate(today.getDate() - 30);
+  else if (period === 'weekly') from.setDate(today.getDate() - 84);
+  else if (period === 'monthly') from.setMonth(today.getMonth() - 12);
+  else from.setFullYear(today.getFullYear() - 2);
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+  document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
+  if (currentBrand) loadBrand();
+}
+
+// ============================================================
+// SEEDED RANDOM (deterministic per brand)
+// ============================================================
+function seededRng(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 4294967296;
+  };
+}
+function brandSeed(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = Math.imul(31, h) + name.charCodeAt(i) | 0;
+  return Math.abs(h);
+}
+function rndRange(rng, min, max) { return min + rng() * (max - min); }
+function rndInt(rng, min, max) { return Math.floor(rndRange(rng, min, max + 1)); }
+
+// ============================================================
+// LOAD BRAND
+// ============================================================
+function loadBrand() {
+  const brandName = document.getElementById('brandFilter').value;
+  if (!brandName) return;
+
+  const brandInfo = ALL_BRANDS.find(b => b.brand === brandName) || {};
+  currentBrand = brandInfo;
+
+  // Period seed: different data per period so date filter actually changes values
+  const PERIOD_OFFSETS = {daily: 0, weekly: 100003, monthly: 200007, yearly: 300011};
+  const periodOffset = PERIOD_OFFSETS[currentPeriod] || 0;
+  const rng  = seededRng(brandSeed(brandName) + periodOffset);
+  // Previous-period rng for delta calculations
+  const prevPeriodKeys = {daily:'yearly', weekly:'daily', monthly:'weekly', yearly:'monthly'};
+  const prevOffset = PERIOD_OFFSETS[prevPeriodKeys[currentPeriod]] || 0;
+  const rngPrev = seededRng(brandSeed(brandName) + prevOffset);
+
+  // Generate brand metrics
+  const salesGrowth = rndRange(rng, -15, 45);
+  const oos = rndRange(rng, 2, 35);
+  const fbf = rndRange(rng, 40, 95);
+  const catalogScore = rndRange(rng, 45, 98);
+  const revenue = rndRange(rng, 50000, 5000000);
+  const units = rndInt(rng, 200, 20000);
+  const brandShare = rndRange(rng, 0.5, 12);
+  const vertShare = rndRange(rng, 8, 45);
+  const campaignSpend = rndRange(rng, 5000, 200000);
+  const avgRoas = rndRange(rng, 1.5, 8);
+  const returns = rndRange(rng, 2, 18);
+  const ratings = rndRange(rng, 3.2, 4.8);
+
+  // Health score
+  let health = 50;
+  if (salesGrowth > 15) health += 15;
+  else if (salesGrowth > 0) health += 8;
+  else health -= 10;
+  if (oos < 10) health += 10;
+  else if (oos < 20) health += 5;
+  else health -= 10;
+  if (fbf > 70) health += 10;
+  if (catalogScore > 80) health += 10;
+  if (avgRoas > 4) health += 5;
+  health = Math.max(20, Math.min(98, health));
+
+  const healthStatus = health >= 70 ? 'good' : (health >= 50 ? 'improving' : 'bad');
+  const healthLabel = health >= 70 ? '✅ GOOD' : (health >= 50 ? '📈 IMPROVING' : '⚠️ NEEDS ATTENTION');
+
+  // Update banner
+  const banner = document.getElementById('healthBanner');
+  banner.className = 'brand-banner ' + healthStatus;
+  document.getElementById('healthScore').textContent = Math.round(health);
+  document.getElementById('healthBrandName').textContent = brandName;
+  document.getElementById('healthStatus').textContent =
+    healthLabel + ' &nbsp;|&nbsp; Seller: ' + (brandInfo.sellerName || 'N/A') +
+    ' &nbsp;|&nbsp; KAM: ' + (brandInfo.kam || 'Unassigned');
+  const badges = document.getElementById('healthBadges');
+  badges.innerHTML = '';
+  const badgeData = [
+    salesGrowth > 0 ? '📈 Sales Growing' : '📉 Sales Drop',
+    oos < 10 ? '✅ In Stock' : (oos < 20 ? '⚠️ OOS Risk' : '🚨 High OOS'),
+    fbf > 70 ? '🏭 FBF Healthy' : '⚡ FBF Low',
+    catalogScore > 80 ? '🗂 Good Catalog' : '🗂 Fix Catalog'
+  ];
+  badgeData.forEach(t => {
+    const b = document.createElement('span');
+    b.className = 'badge';
+    b.textContent = t;
+    badges.appendChild(b);
+  });
+
+  // Compute prev-period values for delta arrows on metric cards
+  const prevSalesGrowth = rndRange(rngPrev, -15, 45);
+  const prevOos         = rndRange(rngPrev, 2, 35);
+  const prevFbf         = rndRange(rngPrev, 40, 95);
+  const prevRevenue     = rndRange(rngPrev, 50000, 5000000);
+  const prevRoas        = rndRange(rngPrev, 1.5, 8);
+  const prevBrandShare  = rndRange(rngPrev, 0.5, 12);
+  const periodLabel     = {daily:'vs Yesterday', weekly:'vs Last Week', monthly:'vs Last Month', yearly:'vs Last Year'}[currentPeriod] || 'vs Last Period';
+
+  // Render metrics
+  renderMetrics({salesGrowth, oos, fbf, catalogScore, revenue, units, campaignSpend, avgRoas, returns, ratings, brandShare, vertShare,
+                 prevSalesGrowth, prevOos, prevFbf, prevRevenue, prevRoas, prevBrandShare, periodLabel});
+
+  // Render hygiene
+  renderHygiene(rng, catalogScore);
+
+  // Render charts
+  renderCharts(brandName, rng, salesGrowth, oos, fbf, brandShare, vertShare);
+
+  // Render insights
+  renderInsights({brandName, salesGrowth, oos, fbf, catalogScore, avgRoas, returns, brandShare, vertShare, brandInfo});
+
+  // Render campaigns
+  generateCampaigns(brandName, rng);
+  renderCampaigns();
+
+  // Price intelligence
+  generatePriceData(brandName, rng, rngPrev);
+  renderPriceSummary();
+  renderPriceTable();
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// ============================================================
+// METRICS
+// ============================================================
+function delta(cur, prev, higherIsBetter=true) {
+  const d = cur - prev;
+  if (Math.abs(d) < 0.01) return '<span style="color:var(--subtext)">— flat</span>';
+  const up = d > 0;
+  const good = higherIsBetter ? up : !up;
+  const color = good ? 'var(--good)' : 'var(--bad)';
+  const arrow = up ? '▲' : '▼';
+  const sign  = up ? '+' : '';
+  return `<span style="color:${color};font-weight:700;">${arrow} ${sign}${Math.abs(d).toFixed(1)}</span>`;
+}
+function deltaPct(cur, prev, higherIsBetter=true) {
+  const d = cur - prev;
+  if (Math.abs(d) < 0.01) return '<span style="color:var(--subtext)">— flat</span>';
+  const up = d > 0;
+  const good = higherIsBetter ? up : !up;
+  const color = good ? 'var(--good)' : 'var(--bad)';
+  const arrow = up ? '▲' : '▼';
+  const sign  = up ? '+' : '';
+  return `<span style="color:${color};font-weight:700;">${arrow} ${sign}${d.toFixed(1)}%</span>`;
+}
+
+function renderMetrics(m) {
+  const pl = m.periodLabel || 'vs Last Period';
+  const grid = document.getElementById('metricsGrid');
+  const cards = [
+    {name:'Sales Growth', value: (m.salesGrowth > 0 ? '+' : '') + m.salesGrowth.toFixed(1) + '%',
+     cls: m.salesGrowth > 0 ? 'good' : 'bad', bar: m.salesGrowth > 0 ? 'up' : 'down',
+     change: deltaPct(m.salesGrowth, m.prevSalesGrowth, true) + ' ' + pl, sub:'GMV Growth'},
+    {name:'Revenue', value: '₹' + formatNum(m.revenue),
+     cls:'neutral', bar:'neutral',
+     change: delta(m.revenue, m.prevRevenue, true) + ' ' + pl, sub:'Gross Merchandise Value'},
+    {name:'Units Sold', value: formatNum(m.units),
+     cls:'neutral', bar:'neutral', change: pl, sub:'Total orders fulfilled'},
+    {name:'OOS Rate', value: m.oos.toFixed(1) + '%',
+     cls: m.oos < 10 ? 'good' : (m.oos < 20 ? 'warn' : 'bad'), bar: m.oos < 15 ? 'up' : 'down',
+     change: deltaPct(m.oos, m.prevOos, false) + ' ' + pl, sub:'Out-of-stock rate'},
+    {name:'FBF %', value: m.fbf.toFixed(1) + '%',
+     cls: m.fbf > 70 ? 'good' : (m.fbf > 50 ? 'warn' : 'bad'), bar: m.fbf > 60 ? 'up' : 'warn',
+     change: deltaPct(m.fbf, m.prevFbf, true) + ' ' + pl, sub:'Flipkart Fulfilled'},
+    {name:'Catalog Score', value: m.catalogScore.toFixed(0),
+     cls: m.catalogScore > 80 ? 'good' : (m.catalogScore > 60 ? 'warn' : 'bad'), bar: m.catalogScore > 70 ? 'up' : 'warn',
+     change: '/100 listing quality', sub:'Catalog Hygiene'},
+    {name:'Brand Share', value: m.brandShare.toFixed(2) + '%',
+     cls:'neutral', bar:'neutral',
+     change: deltaPct(m.brandShare, m.prevBrandShare, true) + ' ' + pl, sub:'of Vertical GMV'},
+    {name:'Avg ROAS', value: m.avgRoas.toFixed(2) + 'x',
+     cls: m.avgRoas > 4 ? 'good' : (m.avgRoas > 2 ? 'warn' : 'bad'), bar: m.avgRoas > 3 ? 'up' : 'down',
+     change: delta(m.avgRoas, m.prevRoas, true) + ' ' + pl, sub:'Return on Ad Spend'},
+    {name:'Return Rate', value: m.returns.toFixed(1) + '%',
+     cls: m.returns < 8 ? 'good' : (m.returns < 14 ? 'warn' : 'bad'), bar: m.returns < 10 ? 'up' : 'down',
+     change: pl, sub:'Product returns'},
+    {name:'Avg Rating', value: m.ratings.toFixed(1) + '★',
+     cls: m.ratings >= 4 ? 'good' : (m.ratings >= 3.5 ? 'warn' : 'bad'), bar: m.ratings >= 4 ? 'up' : 'warn',
+     change: pl, sub:'Customer rating'},
+    {name:'Campaign Spend', value: '₹' + formatNum(m.campaignSpend),
+     cls:'neutral', bar:'neutral', change: pl, sub:'Ad spend this period'},
+    {name:'Vert Share', value: m.vertShare.toFixed(1) + '%',
+     cls: m.vertShare > 20 ? 'good' : (m.vertShare > 10 ? 'warn' : 'bad'), bar: m.vertShare > 15 ? 'up' : 'warn',
+     change: pl, sub:'Vertical penetration'},
+  ];
+  grid.innerHTML = cards.map(c => `
+    <div class="metric-card ${c.bar}">
+      <div class="metric-name">${c.name}</div>
+      <div class="metric-value ${c.cls}">${c.value}</div>
+      <div class="metric-change" style="font-size:10px;">${c.change}</div>
+      <div class="metric-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return Math.round(n).toLocaleString('en-IN');
+}
+
+// ============================================================
+// HYGIENE
+// ============================================================
+function renderHygiene(rng, catalogScore) {
+  const hygieneItems = [
+    {label:'Image Quality', val: rndRange(rng,50,100), good:80},
+    {label:'Title Completeness', val: rndRange(rng,60,100), good:90},
+    {label:'Description Coverage', val: rndRange(rng,40,95), good:75},
+    {label:'Keyword Optimization', val: rndRange(rng,30,90), good:70},
+    {label:'Attributes Filled', val: rndRange(rng,50,100), good:80},
+    {label:'Price Competitiveness', val: rndRange(rng,40,100), good:75},
+  ];
+  const row = document.getElementById('hygieneRow');
+  row.innerHTML = hygieneItems.map(h => {
+    const cls = h.val >= h.good ? 'good' : (h.val >= h.good * 0.75 ? 'warn' : 'bad');
+    return `
+      <div class="hygiene-card">
+        <div class="hygiene-title">${h.label}</div>
+        <div class="progress-label">
+          <span style="font-size:12px; font-weight:700;">${h.val.toFixed(0)}%</span>
+          <span style="font-size:11px; color:var(--subtext);">Target: ${h.good}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${cls}" style="width:${h.val.toFixed(0)}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function generateDates(period) {
+  const dates = [];
+  const today = new Date();
+  let count, step;
+  if (period === 'daily') { count = 30; step = d => { d.setDate(d.getDate() - 1); }; }
+  else if (period === 'weekly') { count = 12; step = d => { d.setDate(d.getDate() - 7); }; }
+  else if (period === 'monthly') { count = 12; step = d => { d.setMonth(d.getMonth() - 1); }; }
+  else { count = 8; step = d => { d.setMonth(d.getMonth() - 3); }; }
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(today);
+    for (let j = 0; j < i; j++) step(d);
+    if (period === 'daily') dates.push(d.toLocaleDateString('en-IN', {day:'2-digit', month:'short'}));
+    else if (period === 'weekly') dates.push('W' + Math.ceil(d.getDate()/7) + ' ' + d.toLocaleString('en-IN',{month:'short'}));
+    else if (period === 'monthly') dates.push(d.toLocaleString('en-IN',{month:'short', year:'2-digit'}));
+    else dates.push('Q' + Math.ceil((d.getMonth()+1)/3) + ' ' + d.getFullYear());
+  }
+  return dates;
+}
+
+function renderCharts(brandName, rng, salesGrowth, oos, fbf, brandShare, vertShare) {
+  const dates = generateDates(currentPeriod);
+  document.getElementById('chartPeriodLabel').textContent = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1) + ' view — ' + dates[0] + ' to ' + dates[dates.length-1];
+
+  // Sales chart data
+  const baseRev = rndRange(rng, 80000, 800000);
+  window._salesData = {
+    revenue: dates.map((_, i) => Math.max(0, baseRev * (1 + salesGrowth/100 * i/dates.length + (rng()-0.5)*0.15))),
+    units: dates.map((_, i) => Math.max(0, rndRange(rng, 100, 2000) * (1 + salesGrowth/200 * i/dates.length))),
+    growth: dates.map((_, i) => salesGrowth * (0.5 + rng() * 0.8) - 10 + i * 0.3),
+  };
+  window._salesDates = dates;
+
+  // Sales Chart
+  if (salesChartInst) salesChartInst.destroy();
+  salesChartInst = new Chart(document.getElementById('salesChart'), {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Revenue (₹)',
+        data: window._salesData.revenue,
+        borderColor: '#2874F0',
+        backgroundColor: 'rgba(40,116,240,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 9 }, maxRotation: 45 } },
+        y: { ticks: { font: { size: 9 }, callback: v => '₹' + formatNum(v) } }
+      }
+    }
+  });
+
+  // Share Chart (donut)
+  const others = 100 - brandShare - vertShare * 0.4;
+  if (shareChartInst) shareChartInst.destroy();
+  const vLabel = document.getElementById('verticalFilter').value || 'Vertical';
+  document.getElementById('verticalShareLabel').textContent = 'Share within ' + vLabel;
+  shareChartInst = new Chart(document.getElementById('shareChart'), {
+    type: 'doughnut',
+    data: {
+      labels: [brandName, 'Top Competitors', 'Others'],
+      datasets: [{
+        data: [brandShare.toFixed(2), (vertShare * 0.4).toFixed(2), Math.max(0, (100 - brandShare - vertShare*0.4)).toFixed(2)],
+        backgroundColor: ['#2874F0', '#F7E018', '#E0E0E0'],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + '%' } }
+      }
+    }
+  });
+
+  // OOS/FBF chart
+  const oosData = dates.map((_, i) => Math.max(0, oos + (rng()-0.5)*8 - i*0.1));
+  const fbfData = dates.map((_, i) => Math.min(100, fbf + (rng()-0.5)*5 + i*0.08));
+  if (oosChartInst) oosChartInst.destroy();
+  oosChartInst = new Chart(document.getElementById('oosChart'), {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: 'OOS %',
+          data: oosData,
+          borderColor: '#D32F2F',
+          backgroundColor: 'rgba(211,47,47,0.08)',
+          fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2,
+          yAxisID: 'y',
+        },
+        {
+          label: 'FBF %',
+          data: fbfData,
+          borderColor: '#1B8A5A',
+          backgroundColor: 'rgba(27,138,90,0.08)',
+          fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2,
+          yAxisID: 'y',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { font: { size: 9 }, maxRotation: 45 } },
+        y: { min: 0, max: 100, ticks: { font: { size: 9 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function updateSalesChart() {
+  if (!salesChartInst || !window._salesData) return;
+  const metric = document.getElementById('metricToggle').value;
+  const dataMap = { revenue: window._salesData.revenue, units: window._salesData.units, growth: window._salesData.growth };
+  const labelMap = { revenue: 'Revenue (₹)', units: 'Units Sold', growth: 'Growth %' };
+  salesChartInst.data.datasets[0].data = dataMap[metric];
+  salesChartInst.data.datasets[0].label = labelMap[metric];
+  const isRev = metric === 'revenue';
+  salesChartInst.options.scales.y.ticks.callback = isRev ? v => '₹' + formatNum(v) : (v => v + (metric === 'growth' ? '%' : ''));
+  salesChartInst.update();
+}
+
+// ============================================================
+// INSIGHTS
+// ============================================================
+function renderInsights(m) {
+  const list = document.getElementById('insightsList');
+  const insights = [];
+
+  if (m.salesGrowth > 20) insights.push({type:'good', icon:'🚀', text:`Sales growing at +${m.salesGrowth.toFixed(1)}% — brand momentum is strong. Consider increasing campaign budgets.`, action:'Boost Budget'});
+  else if (m.salesGrowth > 0) insights.push({type:'warn', icon:'📈', text:`Moderate growth of +${m.salesGrowth.toFixed(1)}%. Optimize top FSNs and A+ content to accelerate.`, action:'Optimize'});
+  else insights.push({type:'bad', icon:'📉', text:`Sales declining ${m.salesGrowth.toFixed(1)}%. Immediate review of pricing, OOS, and campaigns needed.`, action:'Review Now'});
+
+  if (m.oos > 20) insights.push({type:'bad', icon:'🚨', text:`OOS at ${m.oos.toFixed(1)}% — critical stock gap causing revenue loss. Alert seller to replenish immediately.`, action:'Alert Seller'});
+  else if (m.oos > 10) insights.push({type:'warn', icon:'⚠️', text:`OOS at ${m.oos.toFixed(1)}%. Monitor closely and coordinate replenishment for top 5 FSNs.`, action:'Check Stock'});
+  else insights.push({type:'good', icon:'✅', text:`OOS healthy at ${m.oos.toFixed(1)}%. Maintain buffer stock for top sellers.`, action:'Monitor'});
+
+  if (m.fbf < 50) insights.push({type:'bad', icon:'🏭', text:`FBF at ${m.fbf.toFixed(1)}% — low fulfillment quality affects SLA. Push seller to enroll more SKUs in FBF.`, action:'Push FBF'});
+  else if (m.fbf > 80) insights.push({type:'good', icon:'🏭', text:`Excellent FBF at ${m.fbf.toFixed(1)}%. Customers getting fast delivery — great for ratings.`, action:'Sustain'});
+
+  if (m.catalogScore < 70) insights.push({type:'bad', icon:'🗂', text:`Catalog score ${m.catalogScore.toFixed(0)}/100 — images, titles, or attributes incomplete. Fix to improve discoverability.`, action:'Fix Catalog'});
+  else if (m.catalogScore > 85) insights.push({type:'good', icon:'🗂', text:`Strong catalog hygiene (${m.catalogScore.toFixed(0)}/100). Well-optimized listings driving organic traffic.`, action:'Maintain'});
+
+  if (m.avgRoas < 2) insights.push({type:'bad', icon:'💸', text:`ROAS at ${m.avgRoas.toFixed(2)}x is below threshold. Pause low-performing campaigns and reallocate budget to high-converting FSNs.`, action:'Pause Camps'});
+  else if (m.avgRoas > 5) insights.push({type:'good', icon:'💰', text:`ROAS ${m.avgRoas.toFixed(2)}x — excellent campaign efficiency. Scale winning campaigns with additional budget.`, action:'Scale Up'});
+
+  if (m.brandShare < 2) insights.push({type:'warn', icon:'📊', text:`Brand holds only ${m.brandShare.toFixed(2)}% vertical share. Target competitor FSNs and increase ad visibility to capture share.`, action:'Grow Share'});
+  else if (m.brandShare > 8) insights.push({type:'good', icon:'📊', text:`Strong vertical share of ${m.brandShare.toFixed(2)}%. Brand is a key player — defend and expand position.`, action:'Defend'});
+
+  if (m.returns > 14) insights.push({type:'bad', icon:'↩️', text:`High return rate ${m.returns.toFixed(1)}%. Review product quality, size guides, and listing accuracy to reduce returns.`, action:'Investigate'});
+
+  list.innerHTML = insights.slice(0, 7).map(i => `
+    <div class="insight-item ${i.type}">
+      <span class="insight-icon">${i.icon}</span>
+      <span class="insight-text">${i.text}</span>
+      <button class="insight-action ${i.type}" onclick="quickAction('${i.action}', '${m.brandName}')">${i.action}</button>
+    </div>
+  `).join('');
+}
+
+function quickAction(action, brand) {
+  if (action === 'Alert Seller' || action === 'Push FBF' || action === 'Review Now') {
+    showEmailModal();
+  } else {
+    showToast('✅ Action noted: ' + action + ' for ' + brand);
+  }
+}
+
+// ============================================================
+// VERTICAL CATALOG — brand-specific products, MSKUs, variants
+// ============================================================
+const VERTICAL_CATALOG = {
+  'home': {
+    code: 'HK', name: 'Home & Kitchen',
+    keywords: ['curtain','home','kitchen','furnish','decor','bed','bath','linen','carpet','rug','cushion','sofa','chair','lamp','vase','pillow','mattress','towel','curtains','blinds'],
+    products: ['Blackout Curtains','Sheer Curtains','Door Curtains','Window Blinds','Roman Blinds','Eyelet Curtains','Linen Curtains','Velvet Curtains','Cushion Cover Set','Bed Runner','Table Runner','Bath Towel','Hand Towel','Floor Mat','Doormat','Throw Pillow','Curtain Rings','Curtain Rod','Tie Backs','Panel Curtains'],
+    variants: ['54x84 in','54x90 in','52x96 in','Beige','Grey','White','Navy Blue','Rust','Olive Green','Blush Pink','Set of 2','Single Panel','Pack of 4'],
+    priceRange: [299, 4999],
+  },
+  'beauty': {
+    code: 'BP', name: 'Beauty & Personal Care',
+    keywords: ['beauty','glow','skin','serum','cream','face','lip','makeup','cosmetic','hair','nail','groom','shave','herbal','ayur','naturals','organic','glow','gels','lather'],
+    products: ['Face Serum','Vitamin C Serum','Moisturizer SPF30','Night Cream','Eye Cream','Face Wash','Toner','Sheet Mask','Lip Balm','Hair Serum','Shampoo','Conditioner','Hair Oil','Sunscreen SPF50','Face Scrub','Body Lotion','Hand Cream','Nail Polish','BB Cream','Micellar Water'],
+    variants: ['30ml','50ml','100ml','150ml','200ml','30g','50g','Pack of 3','Travel Size','Regular'],
+    priceRange: [149, 2499],
+  },
+  'health': {
+    code: 'HN', name: 'Health & Nutrition',
+    keywords: ['health','nutri','protein','vitamin','wellness','supplement','ayurved','herb','fit','whey','mass','probiotic','collagen','omega','iron','calcium','zinc','multivitamin','penta','nutritoz'],
+    products: ['Whey Protein','Mass Gainer','Multivitamin Tablets','Vitamin C Tablets','Vitamin D3','Omega-3 Fish Oil','Protein Bar','BCAA Powder','Creatine Monohydrate','Collagen Peptides','Iron Supplement','Calcium Tablets','Probiotics','Apple Cider Vinegar','Green Tea Extract','Ashwagandha','Spirulina Tablets','Biotin','Zinc Tablets','Pre-Workout'],
+    variants: ['30 Tablets','60 Tablets','90 Tablets','120 Tablets','500g','1kg','2kg','30 Sachets','60 Caps','Pack of 2'],
+    priceRange: [199, 3999],
+  },
+  'electronics': {
+    code: 'EL', name: 'Electronics',
+    keywords: ['tech','digital','smart','audio','speaker','camera','phone','laptop','gadget','watch','earphone','headphone','electronic','device','sensor','charge'],
+    products: ['Wireless Earbuds','Bluetooth Speaker','Smart Watch','USB-C Hub','Power Bank','Screen Protector','Phone Case','Fast Charger','Webcam','Laptop Stand','LED Desk Lamp','Keyboard','Mouse','Cable Organizer','HDMI Cable','Memory Card','Smart Plug','LED Strip','Ring Light','Portable SSD'],
+    variants: ['Black','White','Silver','Gold','Rose Gold','Navy','32GB','64GB','128GB','Single','Pack of 2'],
+    priceRange: [299, 9999],
+  },
+  'sports': {
+    code: 'SF', name: 'Sports & Fitness',
+    keywords: ['sport','fit','gym','yoga','run','cycle','outdoor','trek','exercise','workout','athletic','crossfit','badminton','cricket','football','swim','zumba'],
+    products: ['Yoga Mat','Resistance Band','Dumbbells','Gym Gloves','Jump Rope','Foam Roller','Exercise Ball','Knee Support','Ankle Support','Water Bottle','Gym Bag','Running Shoes','Sports Socks','Compression Tights','Sweat Wristband','Pull-up Bar','Ab Roller','Battle Rope','Boxing Gloves','Badminton Racket'],
+    variants: ['S','M','L','XL','5kg','10kg','15kg','3mm','5mm','6mm','Blue','Black','Red','Green','Single','Pair'],
+    priceRange: [199, 4999],
+  },
+  'fashion': {
+    code: 'FA', name: 'Fashion',
+    keywords: ['fashion','wear','cloth','shirt','dress','jean','shoe','bag','accessor','apparel','kurta','saree','legging','top','tshirt','blouse','ethnic','western','footwear'],
+    products: ['Cotton Kurta','Formal Shirt','Casual T-Shirt','Slim Fit Jeans','Palazzo Pants','Ethnic Lehenga','Anarkali Suit','Saree','Handbag','Tote Bag','Sandals','Sneakers','Flat Shoes','Stole','Dupatta','Scarf','Belt','Wallet','Sunglasses','Watch'],
+    variants: ['XS','S','M','L','XL','XXL','Free Size','Black','White','Blue','Red','Navy','Beige','Floral','Solid'],
+    priceRange: [399, 7999],
+  },
+  'baby': {
+    code: 'BK', name: 'Baby & Kids',
+    keywords: ['baby','kid','child','toy','infant','mama','toddler','newborn','diaper','milk','formula','feeding'],
+    products: ['Baby Diaper','Baby Wipes','Baby Lotion','Baby Shampoo','Feeding Bottle','Sippy Cup','Baby Food Puree','Teether','Baby Blanket','Baby Bodysuit','Stroller Toy','Baby Monitor','Night Light','Baby Carrier','Changing Mat','Rattle Set','Baby Sunscreen','Nursing Pillow','Baby Oil','Growth Chart'],
+    variants: ['S (0-3M)','M (3-6M)','L (6-12M)','XL (12-18M)','Pack of 20','Pack of 50','100ml','200ml','Single','Set of 3'],
+    priceRange: [149, 3999],
+  },
+  'food': {
+    code: 'GF', name: 'Grocery & Food',
+    keywords: ['food','snack','spice','sauce','grocery','beverage','drink','chai','coffee','biscuit','cookie','chocolate','jam','pickle','oil','ghee','atta','rice','dal','honey','maizo','eatoriyumm'],
+    products: ['Green Tea Bags','Instant Coffee','Protein Cookies','Dark Chocolate','Peanut Butter','Honey','Granola Bars','Oats','Mixed Nuts','Quinoa','Apple Cider Vinegar','Herbal Tea','Rice Cakes','Trail Mix','Chia Seeds','Flax Seeds','Coconut Oil','Almond Butter','Dates','Dry Fruits Pack'],
+    variants: ['100g','200g','250g','500g','1kg','Pack of 6','Pack of 12','Pack of 24','250ml','500ml'],
+    priceRange: [99, 1999],
+  },
+};
+const VERTICAL_DEFAULT = {
+  code: 'GN', name: 'General',
+  products: ['Premium Product A','Deluxe Product B','Essential Pack C','Value Bundle D','Signature Series E','Pro Edition F','Standard Kit G','Basic Set H','Limited Edition I','Classic Model J'],
+  variants: ['Standard','Premium','Deluxe','Pack of 2','Pack of 3','Small','Medium','Large'],
+  priceRange: [199, 4999],
+};
+
+function detectVertical(brandName) {
+  const bn = brandName.toLowerCase();
+  for (const [key, cat] of Object.entries(VERTICAL_CATALOG)) {
+    if (cat.keywords.some(kw => bn.includes(kw))) return cat;
+  }
+  // Fallback: use seed to assign consistent vertical
+  const s = brandSeed(brandName) % Object.keys(VERTICAL_CATALOG).length;
+  return Object.values(VERTICAL_CATALOG)[s];
+}
+
+function makeMsku(brandName, vertCode, seq) {
+  const prefix = brandName.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,6);
+  return prefix + '-' + vertCode + '-' + String(seq).padStart(3,'0');
+}
+
+function makeFsn(rng) {
+  // Deterministic FSN from seeded rng
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let fsn = 'FSN';
+  for (let i = 0; i < 9; i++) fsn += chars[Math.floor(rng() * chars.length)];
+  return fsn;
+}
+
+const CAMP_TYPES = ['Brand Awareness', 'Product Targeted', 'Category Targeted', 'Dynamic Ads', 'Keyword Targeted'];
+
+function generateCampaigns(brandName, rng) {
+  const vert = detectVertical(brandName);
+  currentCampaigns = [];
+  const count = rndInt(rng, 8, 16);
+  for (let i = 0; i < count; i++) {
+    const seq = rndInt(rng, 1, 50);
+    const currCpc = rndRange(rng, 2, 35);
+    const baseRoas = rndRange(rng, 1, 8);
+    const recMulti = baseRoas < 2 ? 0.7 : (baseRoas > 5 ? 1.2 : 1.05);
+    const recCpc = currCpc * recMulti;
+    const priority = baseRoas < 2 ? 'high' : (baseRoas < 4 ? 'med' : 'low');
+    const impr = rndInt(rng, 1000, 80000);
+    const ctr = rndRange(rng, 0.5, 6);
+    const clicks = Math.floor(impr * ctr / 100);
+    const budget = rndRange(rng, 500, 15000);
+    const prodIdx = rndInt(rng, 0, vert.products.length - 1);
+    currentCampaigns.push({
+      fsn: makeFsn(rng),
+      msku: makeMsku(brandName, vert.code, seq),
+      product: vert.products[prodIdx],
+      campaign: CAMP_TYPES[rndInt(rng, 0, CAMP_TYPES.length - 1)],
+      priority,
+      currCpc: currCpc.toFixed(2),
+      recCpc: recCpc.toFixed(2),
+      budget: Math.round(budget),
+      impr: impr.toLocaleString('en-IN'),
+      clicks: clicks.toLocaleString('en-IN'),
+      roas: baseRoas.toFixed(2),
+      direction: recCpc > currCpc ? 'up' : 'down',
+    });
+  }
+}
+
+function renderCampaigns() {
+  const filter = document.getElementById('campFilter').value;
+  let data = currentCampaigns;
+  if (filter !== 'all') data = data.filter(c => c.priority === filter);
+  const tbody = document.getElementById('campaignTable');
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td>
+        <a class="fsn-link" href="#" onclick="return false;">${c.fsn}</a>
+        <div style="font-size:9px;color:var(--subtext);font-family:monospace;margin-top:1px;">${c.msku}</div>
+      </td>
+      <td style="max-width:120px; overflow:hidden; text-overflow:ellipsis;">${c.product}</td>
+      <td style="font-size:11px; color:var(--subtext);">${c.campaign}</td>
+      <td><span class="priority-${c.priority}">${c.priority.toUpperCase()}</span></td>
+      <td>₹${c.currCpc}</td>
+      <td class="${c.direction === 'up' ? 'bid-up' : 'bid-down'}">₹${c.recCpc} ${c.direction === 'up' ? '↑' : '↓'}</td>
+      <td>₹${c.budget.toLocaleString('en-IN')}/day</td>
+      <td style="font-size:11px;">${c.impr}</td>
+      <td style="font-size:11px;">${c.clicks}</td>
+      <td class="${parseFloat(c.roas) > 4 ? 'roas-high' : (parseFloat(c.roas) < 2 ? 'roas-low' : '')}">${c.roas}x</td>
+    </tr>
+  `).join('');
+}
+
+
+// ============================================================
+// PRICE INTELLIGENCE
+// ============================================================
+let currentPriceData = [];
+
+function generatePriceData(brandName, rng, rngPrev) {
+  const vert = detectVertical(brandName);
+  const seed = brandSeed(brandName);
+  const isParityBrand = (seed % 3 === 0); // ~1/3 of brands are Amazon parity brands
+  currentPriceData = [];
+  const count = rndInt(rng, 12, 20);
+
+  for (let i = 0; i < count; i++) {
+    const seq = i + 1;
+    const msku = makeMsku(brandName, vert.code, seq);
+    const fsn  = makeFsn(rng);
+
+    // Base FK price from vertical range
+    const [pMin, pMax] = vert.priceRange;
+    const fkPrice = Math.round(rndRange(rng, pMin, pMax));
+
+    // Pick product & variant from vertical's own catalog
+    const prodIdx = rndInt(rng, 0, vert.products.length - 1);
+    const product = vert.products[prodIdx];
+    const hasVariant = rng() < 0.65;
+    const variant = hasVariant ? vert.variants[rndInt(rng, 0, vert.variants.length - 1)] : null;
+
+    // Parity type
+    const isParity = isParityBrand || rng() < 0.4;
+    const parityType = isParity
+      ? (isParityBrand ? 'amazon' : (rng() < 0.5 ? 'amazon' : 'competitor'))
+      : 'competitor';
+    const parityLabel = parityType === 'amazon' ? 'Amazon' : 'Competitor';
+
+    // Competitor / Amazon price for this period
+    const gapFactor = rndRange(rng, -0.22, 0.28);
+    const compPrice = Math.round(fkPrice * (1 + gapFactor));
+    const gapPct = ((fkPrice - compPrice) / compPrice) * 100;
+
+    // PREVIOUS period price (for delta comparison)
+    const prevFkPrice  = Math.round(rndRange(rngPrev, pMin, pMax));
+    const prevGapF     = rndRange(rngPrev, -0.22, 0.28);
+    const prevCompPrice = Math.round(prevFkPrice * (1 + prevGapF));
+    const priceDelta   = fkPrice - prevFkPrice;       // +ve = price went UP this period
+    const priceIncrease = priceDelta > 0 && gapPct > 3; // alert: price rose AND FK is expensive
+
+    // Period label
+    const periodLabels = {daily:'vs Yesterday', weekly:'vs Last Week', monthly:'vs Last Month', yearly:'vs Last Year'};
+    const deltaLabel = periodLabels[currentPeriod] || 'vs Last Period';
+
+    // Days since last change (derived from delta)
+    const daysAgo = rndInt(rng, 0, 14);
+    const lastChanged = daysAgo === 0 ? 'Today' : (daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago');
+
+    // Recommendation
+    let rec, recClass;
+    if (parityType === 'amazon') {
+      if (Math.abs(gapPct) <= 3)      { rec = 'At Amazon Parity ✓'; recClass = 'maintain'; }
+      else if (gapPct > 3)            { rec = gapPct > 15 ? 'Match Amazon — Urgent' : 'Match Amazon'; recClass = gapPct > 15 ? 'urgent' : 'match-amz'; }
+      else                            { rec = 'Room to Increase'; recClass = 'increase'; }
+    } else {
+      if (gapPct > 20)                { rec = 'Reduce Urgently'; recClass = 'urgent'; }
+      else if (gapPct > 5)            { rec = 'Reduce Price'; recClass = 'reduce'; }
+      else if (gapPct < -10)          { rec = 'Room to Increase'; recClass = 'increase'; }
+      else                            { rec = 'Maintain'; recClass = 'maintain'; }
+    }
+
+    currentPriceData.push({
+      fsn, msku, product, variant, parityType, parityLabel,
+      fkPrice, compPrice, gapPct: gapPct.toFixed(1),
+      prevFkPrice, priceDelta, priceIncrease, deltaLabel,
+      lastChanged, rec, recClass, isParity,
+    });
+  }
+}
+
+function renderPriceSummary() {
+  const data = currentPriceData;
+  const expensive = data.filter(d => parseFloat(d.gapPct) > 3).length;
+  const cheaper   = data.filter(d => parseFloat(d.gapPct) < -3).length;
+  const parity    = data.filter(d => Math.abs(parseFloat(d.gapPct)) <= 3).length;
+  const alerts    = data.filter(d => d.priceIncrease).length;
+  const avgGap    = data.reduce((s,d) => s + parseFloat(d.gapPct), 0) / data.length;
+
+  document.getElementById('priceSummaryRow').innerHTML = `
+    <div class="price-stat">
+      <div class="price-stat-label">Total SKUs</div>
+      <div class="price-stat-value neutral">${data.length}</div>
+      <div class="price-stat-sub">Tracked</div>
+    </div>
+    <div class="price-stat">
+      <div class="price-stat-label">FK Expensive</div>
+      <div class="price-stat-value expensive">${expensive}</div>
+      <div class="price-stat-sub">Above competitor</div>
+    </div>
+    <div class="price-stat">
+      <div class="price-stat-label">FK Cheaper</div>
+      <div class="price-stat-value competitive">${cheaper}</div>
+      <div class="price-stat-sub">Below competitor</div>
+    </div>
+    <div class="price-stat">
+      <div class="price-stat-label">At Parity</div>
+      <div class="price-stat-value parity">${parity}</div>
+      <div class="price-stat-sub">±3% of target</div>
+    </div>
+    <div class="price-stat">
+      <div class="price-stat-label">Price Alerts</div>
+      <div class="price-stat-value expensive">${alerts}</div>
+      <div class="price-stat-sub">Recent increase</div>
+    </div>
+    <div class="price-stat">
+      <div class="price-stat-label">Avg Price Gap</div>
+      <div class="price-stat-value ${parseFloat(avgGap) > 0 ? 'expensive' : 'competitive'}">${avgGap > 0 ? '+' : ''}${avgGap.toFixed(1)}%</div>
+      <div class="price-stat-sub">vs benchmark</div>
+    </div>
+  `;
+
+  // Show/hide alert banner
+  const alertData = data.filter(d => d.priceIncrease);
+  const banner = document.getElementById('priceAlertBanner');
+  if (alertData.length > 0) {
+    banner.classList.add('show');
+    document.getElementById('priceAlertTitle').textContent =
+      `🚨 Price Increase Alert — ${alertData.length} FSN${alertData.length > 1 ? 's' : ''} priced above benchmark`;
+    document.getElementById('priceAlertDesc').textContent =
+      `${alertData.filter(d=>d.parityType==='amazon').length} Amazon parity breach(es) · ${alertData.filter(d=>d.parityType==='competitor').length} competitor gap(s). Immediate review recommended.`;
+    const pills = document.getElementById('priceAlertPills');
+    pills.innerHTML = alertData.slice(0, 4).map(d =>
+      `<span class="price-alert-pill">${d.fsn} · +${d.gapPct}%</span>`
+    ).join('');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderPriceTable() {
+  const typeF = document.getElementById('priceTypeFilter').value;
+  const parityF = document.getElementById('parityTypeFilter').value;
+  let data = [...currentPriceData];
+  if (typeF === 'expensive') data = data.filter(d => parseFloat(d.gapPct) > 3);
+  else if (typeF === 'cheaper') data = data.filter(d => parseFloat(d.gapPct) < -3);
+  else if (typeF === 'parity') data = data.filter(d => Math.abs(parseFloat(d.gapPct)) <= 3);
+  else if (typeF === 'alert') data = data.filter(d => d.priceIncrease);
+  if (parityF !== 'all') data = data.filter(d => d.parityType === parityF);
+
+  // Sort: alerts first, then most expensive gap
+  data.sort((a,b) => (b.priceIncrease - a.priceIncrease) || parseFloat(b.gapPct) - parseFloat(a.gapPct));
+
+  const gapClass = g => parseFloat(g) > 3 ? 'expensive' : (parseFloat(g) < -3 ? 'cheaper' : 'parity');
+  const gapLabel = g => parseFloat(g) > 3 ? `+${g}% ▲` : (parseFloat(g) < -3 ? `${g}% ▼` : `${g}% ≈`);
+
+  // Update vs-last-period header label
+  if (data.length > 0) document.getElementById('priceVsLabel').textContent = data[0].deltaLabel + ' ▲▼';
+
+  document.getElementById('priceTable').innerHTML = data.map(d => {
+    const deltaAbs = Math.abs(d.priceDelta);
+    const deltaStr = d.priceDelta === 0 ? '—'
+      : (d.priceDelta > 0
+        ? `<span style="color:var(--bad);font-weight:700;">+₹${deltaAbs.toLocaleString('en-IN')} ↑</span>`
+        : `<span style="color:var(--good);font-weight:700;">-₹${deltaAbs.toLocaleString('en-IN')} ↓</span>`);
+    return `
+    <tr style="${d.priceIncrease ? 'background:#FFF5F5;' : ''}">
+      <td>
+        <a class="fsn-link" href="#" onclick="return false;">${d.fsn}</a>
+        <div style="font-size:9px;color:var(--subtext);font-family:monospace;margin-top:1px;">${d.msku}</div>
+      </td>
+      <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;">${d.product}</td>
+      <td style="font-size:11px;color:var(--subtext);">${d.variant || '—'}</td>
+      <td>
+        <span class="parity-badge ${d.parityType}">
+          ${d.parityType === 'amazon' ? '🛒 Amazon' : '🏪 Competitor'}
+        </span>
+      </td>
+      <td style="font-weight:700;">₹${d.fkPrice.toLocaleString('en-IN')}
+        ${d.priceIncrease ? '<span class="price-increase-tag">↑ Alert</span>' : ''}
+      </td>
+      <td>${deltaStr}</td>
+      <td style="color:var(--subtext);">₹${d.compPrice.toLocaleString('en-IN')}</td>
+      <td class="price-diff-cell ${gapClass(d.gapPct)}">${gapLabel(d.gapPct)}</td>
+      <td style="font-size:11px;color:var(--subtext);">${d.lastChanged}</td>
+      <td><span class="rec-badge ${d.recClass}">${d.rec}</span></td>
+      <td>
+        <button style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;cursor:pointer;"
+          onclick="openPriceAction('${d.fsn}','${d.msku}','${d.product}','${d.rec}','${d.gapPct}','${d.parityType}','${d.priceDelta}','${d.deltaLabel}')">
+          Act
+        </button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--subtext);">No FSNs match filter</td></tr>';
+}
+
+function openPriceAction(fsn, msku, product, rec, gap, parityType, priceDelta, deltaLabel) {
+  document.getElementById('emailTo').value = currentBrand ? (currentBrand.kam || '').toLowerCase() + '@flipkart.com' : '';
+  document.getElementById('emailCc').value = 'danamma.pagad@flipkart.com';
+  document.getElementById('emailSubject').value = `[Price Alert] ${document.getElementById('brandFilter').value} — ${msku} requires price action`;
+  const parityStr = parityType === 'amazon' ? 'Amazon' : 'competitor';
+  const deltaNum = parseInt(priceDelta) || 0;
+  document.getElementById('emailBody').value =
+`Hi KAM Team,
+
+Price action required:
+
+Brand    : ${document.getElementById('brandFilter').value}
+FSN      : ${fsn}
+MSKU     : ${msku}
+Product  : ${product}
+${deltaLabel}: ${deltaNum > 0 ? '↑ Price increased by ₹' + deltaNum : (deltaNum < 0 ? '↓ Price decreased by ₹' + Math.abs(deltaNum) : 'No change')}
+Current Gap: FK is ${parseFloat(gap) > 0 ? gap + '% ABOVE' : Math.abs(gap) + '% below'} ${parityStr} price
+Recommendation: ${rec}
+
+Please coordinate with the seller to update the price on Seller Hub to maintain ${parityType === 'amazon' ? 'Amazon parity' : 'market competitiveness'}.
+
+Deadline: Within 24 hours to avoid search rank and Buy Box impact.
+
+Dashboard: Flipkart Brand Intelligence Platform  |  Period: ${currentPeriod.toUpperCase()}
+Date: ${new Date().toLocaleDateString('en-IN')}
+
+Regards,
+KAM Analytics Team`;
+  document.getElementById('emailModal').classList.add('show');
+}
+
+function sendPriceAlert() {
+  const brand = document.getElementById('brandFilter').value;
+  const alertData = currentPriceData.filter(d => d.priceIncrease);
+  document.getElementById('emailTo').value = currentBrand ? (currentBrand.kam || '').toLowerCase() + '@flipkart.com' : '';
+  document.getElementById('emailCc').value = 'danamma.pagad@flipkart.com';
+  document.getElementById('emailSubject').value = `[URGENT] Price Increase Alert — ${brand} — ${alertData.length} FSN(s) above benchmark`;
+  document.getElementById('emailBody').value =
+`Hi KAM Team,
+
+URGENT: Price increases detected for brand ${brand}.
+
+${alertData.length} FSN(s) are currently priced above their benchmark (Amazon / competitor):
+
+${alertData.map(d => `• FSN: ${d.fsn} | Product: ${d.product}${d.variant ? ' (' + d.variant + ')' : ''}
+  FK Price: ₹${d.fkPrice.toLocaleString('en-IN')} | Benchmark: ₹${d.compPrice.toLocaleString('en-IN')} | Gap: +${d.gapPct}%
+  Parity Type: ${d.parityType === 'amazon' ? 'Amazon Parity Brand' : 'Competitor Parity'}
+  Recommended Action: ${d.rec}`).join('\n\n')}
+
+Please escalate to seller to correct prices within 24 hours.
+
+Date: ${new Date().toLocaleDateString('en-IN')}
+
+Regards,
+KAM Analytics Team`;
+  document.getElementById('emailModal').classList.add('show');
+}
+
+// ============================================================
+// EMAIL MODAL
+// ============================================================
+function showEmailModal() {
+  const brand = document.getElementById('brandFilter').value || '(Select Brand)';
+  const kam = currentBrand ? currentBrand.kam : '';
+  const kamEmail = kam && kam !== 'Unassigned' ? kam.toLowerCase().replace(/\//g,'_').replace(' ','') + '@flipkart.com' : '';
+  document.getElementById('emailTo').value = kamEmail;
+  document.getElementById('emailCc').value = 'danamma.pagad@flipkart.com';
+  document.getElementById('emailSubject').value = `[Action Required] Brand Alert: ${brand} — Flipkart KAM Dashboard`;
+  document.getElementById('emailBody').value = generateEmailBody(brand);
+  document.getElementById('emailModal').classList.add('show');
+}
+
+function generateEmailBody(brand) {
+  if (!currentBrand || !currentCampaigns.length) return `Hi,\n\nThis is an alert regarding brand: ${brand}.\nPlease review the dashboard for latest insights.\n\nRegards,\nKAM Team`;
+  const highPri = currentCampaigns.filter(c => c.priority === 'high');
+  return `Hi KAM Team,\n\nAction required for brand: ${brand}\n\nKey Concerns:\n- Please review the brand dashboard for latest OOS, Sales, and Campaign metrics.\n\nCampaign Alerts (${highPri.length} high-priority FSNs):\n${highPri.slice(0,3).map(c => `• FSN: ${c.fsn} | Curr CPC: ₹${c.currCpc} → Rec: ₹${c.recCpc} | Daily Budget: ₹${c.budget} | ROAS: ${c.roas}x`).join('\n')}\n\nPlease take immediate action and update the tracker.\n\nDashboard: Flipkart Brand Intelligence Platform\nDate: ${new Date().toLocaleDateString('en-IN')}\n\nRegards,\nKAM Analytics Team`;
+}
+
+function hideEmailModal() {
+  document.getElementById('emailModal').classList.remove('show');
+}
+
+function sendEmail() {
+  const to = document.getElementById('emailTo').value;
+  const subject = document.getElementById('emailSubject').value;
+  const body = document.getElementById('emailBody').value;
+  if (!to) { showToast('❌ Please enter recipient email'); return; }
+  // Gmail mailto fallback (real send requires backend/Gmail API)
+  const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailtoUrl);
+  hideEmailModal();
+  showToast('📧 Email client opened! Configure Gmail API for direct send.');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function exportReport() {
+  const brand = document.getElementById('brandFilter').value;
+  if (!brand) { showToast('⚠️ Select a brand first'); return; }
+  showToast('📥 Export triggered — connect BigQuery for live data export');
+}
+</script>
+</body>
+</html>
